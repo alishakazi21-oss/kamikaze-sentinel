@@ -10,11 +10,22 @@ import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { TraineeProfile, UnitProfile, Scenario, AARReport } from './types';
 import { soundFx } from './utils/audio';
 
+const DEFAULT_UNITS: UnitProfile[] = [
+  { id: 'UNIT-NORTH', name: '14th Strike Corps (Northern Command)', base_location: 'Udhampur Sector' },
+  { id: 'UNIT-WEST', name: '9th Desert Surveillance Battalion', base_location: 'Jodhpur Sector' }
+];
+
+const DEFAULT_TRAINEES: TraineeProfile[] = [
+  { id: 'TRN-701', unit_id: 'UNIT-NORTH', callsign: 'GARUDA-01', rank: 'Captain', current_difficulty: 2 },
+  { id: 'TRN-702', unit_id: 'UNIT-NORTH', callsign: 'VALIANT-04', rank: 'Lieutenant', current_difficulty: 1 },
+  { id: 'TRN-703', unit_id: 'UNIT-WEST', callsign: 'DESERT-FOX', rank: 'Major', current_difficulty: 3 }
+];
+
 export function App() {
   const [currentTab, setCurrentTab] = useState<string>('battlefield'); // Default straight to 3D Soldier Simulation!
-  const [units, setUnits] = useState<UnitProfile[]>([]);
-  const [trainees, setTrainees] = useState<TraineeProfile[]>([]);
-  const [currentTrainee, setCurrentTrainee] = useState<TraineeProfile | null>(null);
+  const [units, setUnits] = useState<UnitProfile[]>(DEFAULT_UNITS);
+  const [trainees, setTrainees] = useState<TraineeProfile[]>(DEFAULT_TRAINEES);
+  const [currentTrainee, setCurrentTrainee] = useState<TraineeProfile | null>(DEFAULT_TRAINEES[0]);
 
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null);
   const [latestAAR, setLatestAAR] = useState<AARReport | null>(null);
