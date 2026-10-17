@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { soundFx } from '../utils/audio';
-import { Shield, Crosshair, AlertTriangle, Radio, Eye, Zap, Volume2, VolumeX, Moon, Sun, RotateCcw, ArrowRight, Play, FastForward } from 'lucide-react';
+import { Shield, Crosshair, AlertTriangle, Radio, Eye, Zap, Volume2, VolumeX, Moon, Sun, RotateCcw, ArrowRight, Play, FastForward, Navigation } from 'lucide-react';
 import { TargetClass } from '../types';
 
 interface DroneEntity {
@@ -12,7 +12,7 @@ interface DroneEntity {
   velocity: THREE.Vector3;
   targetPos: THREE.Vector3;
   speed: number;
-  health: number; // 100 to 0
+  health: number;
   status: 'flying' | 'jammed' | 'falling' | 'destroyed';
   mesh: THREE.Group;
   trailPoints: THREE.Vector3[];
@@ -78,17 +78,16 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
   }[]>([]);
   const [lockedDrone, setLockedDrone] = useState<DroneEntity | null>(null);
   const [headingDegrees, setHeadingDegrees] = useState<number>(0);
-  const [combatAlertText, setCombatAlertText] = useState<string>('AIRSPACE CLEAR // SCANNING HORIZON');
-  const [alertLevel, setAlertLevel] = useState<'low' | 'med' | 'high'>('low');
-  const [nearestDist, setNearestDist] = useState<number>(140);
-  const [impactTimeEst, setImpactTimeEst] = useState<number>(8.5);
+  const [combatAlertText, setCombatAlertText] = useState<string>('INCOMING DRONE DETECTED DIRECTLY AHEAD!');
+  const [alertLevel, setAlertLevel] = useState<'low' | 'med' | 'high'>('high');
+  const [nearestDist, setNearestDist] = useState<number>(95);
+  const [impactTimeEst, setImpactTimeEst] = useState<number>(6.5);
 
-  // Logs of actions taken for scoring
+  // Scoring
   const eventsLogRef = useRef<any[]>([]);
   const startTimeRef = useRef<number>(Date.now());
   const neutralizedCountRef = useRef<number>(0);
   const totalDronesCountRef = useRef<number>(0);
-  const waveRef = useRef<number>(1);
 
   // References to 3D simulation objects
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -105,8 +104,8 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
   const dronesRef = useRef<DroneEntity[]>([]);
   const keysRef = useRef<{ [key: string]: boolean }>({});
   const beamMeshRef = useRef<THREE.Mesh | null>(null);
-  const tracerParticlesRef = useRef<THREE.Points | null>(null);
-  const explosionsRef = useRef<{ group: THREE.Group; life: number }[]>([]);
+  const isMouseDownRef = useRef<boolean>(false);
+  const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Function to spawn threats based on wave
   const spawnThreatWave = useCallback((waveNum: number, currentScene: THREE.Scene) => {
@@ -118,29 +117,29 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
     const newDrones: DroneEntity[] = [];
 
+    // Create high-detail military combat drone (Large 2.8m wingspan)
     const createDroneMesh = (type: TargetClass) => {
       const droneGrp = new THREE.Group();
 
-      // Main fuselage - Large delta loitering munition (2.4m wingspan)
       const isKamikaze = type === 'hostile';
-      const bodyColor = isKamikaze ? 0x1e293b : 0x065f46;
+      const bodyColor = isKamikaze ? 0x0f172a : 0x064e3b;
 
-      // Delta Wing Body
+      // Delta Wing Body with aerodynamic profile
       const wingShape = new THREE.Shape();
-      wingShape.moveTo(0, 1.4); // Nose
-      wingShape.lineTo(1.3, -1.0); // Right wingtip
-      wingShape.lineTo(0.3, -0.7); // Right inboard
-      wingShape.lineTo(0, -0.6); // Center tail
-      wingShape.lineTo(-0.3, -0.7); // Left inboard
-      wingShape.lineTo(-1.3, -1.0); // Left wingtip
+      wingShape.moveTo(0, 1.6); // Nose
+      wingShape.lineTo(1.5, -1.1); // Right wingtip
+      wingShape.lineTo(0.35, -0.75); // Right inboard
+      wingShape.lineTo(0, -0.65); // Center tail
+      wingShape.lineTo(-0.35, -0.75); // Left inboard
+      wingShape.lineTo(-1.5, -1.1); // Left wingtip
       wingShape.closePath();
 
-      const extrudeSettings = { depth: 0.22, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 };
+      const extrudeSettings = { depth: 0.26, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.06, bevelThickness: 0.06 };
       const wingGeom = new THREE.ExtrudeGeometry(wingShape, extrudeSettings);
       const wingMat = new THREE.MeshStandardMaterial({
         color: bodyColor,
         roughness: 0.35,
-        metalness: 0.8,
+        metalness: 0.85,
       });
       const wingMesh = new THREE.Mesh(wingGeom, wingMat);
       wingMesh.rotation.x = Math.PI / 2;
@@ -148,85 +147,91 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       wingMesh.castShadow = true;
       droneGrp.add(wingMesh);
 
-      // Military Hazard Orange/Yellow Chevrons on wingtips for high visibility
-      const stripeMat = new THREE.MeshBasicMaterial({ color: isKamikaze ? 0xf97316 : 0x10b981 });
-      const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.15), stripeMat);
-      stripeL.position.set(-1.1, 0, -0.8);
-      droneGrp.add(stripeL);
-      const stripeR = stripeL.clone();
-      stripeR.position.set(1.1, 0, -0.8);
-      droneGrp.add(stripeR);
+      // High-Visibility Hazard Chevrons (Bright Orange on wingtips)
+      const chevronMat = new THREE.MeshBasicMaterial({ color: isKamikaze ? 0xf97316 : 0x10b981 });
+      const chevronL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 0.2), chevronMat);
+      chevronL.position.set(-1.2, 0, -0.9);
+      droneGrp.add(chevronL);
+      const chevronR = chevronL.clone();
+      chevronR.position.set(1.2, 0, -0.9);
+      droneGrp.add(chevronR);
 
-      // Fuselage central spine / seeker head
-      const seekerGeom = new THREE.SphereGeometry(0.2, 12, 12);
+      // Optical Gimbal Seeker Turret with red laser diode
+      const seekerGeom = new THREE.SphereGeometry(0.24, 16, 16);
       const seekerMat = new THREE.MeshStandardMaterial({
-        color: isKamikaze ? 0xef4444 : 0x38bdf8,
-        emissive: isKamikaze ? 0x991b1b : 0x0369a1,
+        color: 0x1e293b,
+        metalness: 0.9,
         roughness: 0.2,
       });
       const seeker = new THREE.Mesh(seekerGeom, seekerMat);
-      seeker.position.set(0, 0, 1.4);
+      seeker.position.set(0, -0.05, 1.5);
       droneGrp.add(seeker);
 
-      // 4 High-Speed Rotor Disks on outriggers
+      const lensGeom = new THREE.CircleGeometry(0.12, 16);
+      const lensMat = new THREE.MeshBasicMaterial({ color: isKamikaze ? 0xef4444 : 0x06b6d4, side: THREE.DoubleSide });
+      const lens = new THREE.Mesh(lensGeom, lensMat);
+      lens.position.set(0, -0.05, 1.74);
+      droneGrp.add(lens);
+
+      // 4 High-Speed Rotor Disks on carbon outriggers
       const rotorList: THREE.Mesh[] = [];
       const rotorDiskMat = new THREE.MeshBasicMaterial({
         color: 0x38bdf8,
         transparent: true,
-        opacity: 0.65,
+        opacity: 0.7,
         side: THREE.DoubleSide,
       });
 
       const rotorPositions = [
-        [-0.8, 0.12, 0.5],
-        [0.8, 0.12, 0.5],
-        [-0.9, 0.12, -0.6],
-        [0.9, 0.12, -0.6],
+        [-0.95, 0.14, 0.6],
+        [0.95, 0.14, 0.6],
+        [-1.05, 0.14, -0.7],
+        [1.05, 0.14, -0.7],
       ];
 
       rotorPositions.forEach(([rx, ry, rz]) => {
         const pylon = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.04, 0.2),
-          new THREE.MeshStandardMaterial({ color: 0x0f172a })
+          new THREE.CylinderGeometry(0.05, 0.05, 0.25),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 })
         );
-        pylon.position.set(rx, ry - 0.1, rz);
+        pylon.position.set(rx, ry - 0.12, rz);
         droneGrp.add(pylon);
 
-        const rDisk = new THREE.Mesh(new THREE.CircleGeometry(0.45, 12), rotorDiskMat);
+        const rDisk = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), rotorDiskMat);
         rDisk.rotation.x = Math.PI / 2;
         rDisk.position.set(rx, ry, rz);
         droneGrp.add(rDisk);
         rotorList.push(rDisk);
       });
 
-      // Ultra-bright flashing red strobe light
-      const strobeLight = new THREE.PointLight(isKamikaze ? 0xff2222 : 0x22ff22, 6, 40);
-      strobeLight.position.set(0, 0.3, 0);
+      // Ultra-bright flashing red strobe beacon
+      const strobeLight = new THREE.PointLight(isKamikaze ? 0xff0000 : 0x00ff00, 8, 50);
+      strobeLight.position.set(0, 0.35, 0);
       droneGrp.add(strobeLight);
 
       const strobeMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.SphereGeometry(0.16, 12, 12),
         new THREE.MeshBasicMaterial({ color: isKamikaze ? 0xff0000 : 0x00ff00 })
       );
-      strobeMesh.position.set(0, 0.3, 0);
+      strobeMesh.position.set(0, 0.35, 0);
       droneGrp.add(strobeMesh);
 
-      // Engine exhaust glow
+      // Fiery rocket motor exhaust nozzle
       const exhaust = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.14, 0.4),
+        new THREE.CylinderGeometry(0.1, 0.18, 0.5),
         new THREE.MeshBasicMaterial({ color: 0xf59e0b })
       );
       exhaust.rotation.x = Math.PI / 2;
-      exhaust.position.set(0, 0, -1.0);
+      exhaust.position.set(0, 0, -1.2);
       droneGrp.add(exhaust);
 
       return { grp: droneGrp, rotors: rotorList, strobeLight, strobeMesh };
     };
 
     if (waveNum === 1) {
-      // WAVE 1: Direct Straight-In Kamikaze Dive Attack (Directly in front at z = -140)
+      // WAVE 1: Direct Straight-In Kamikaze Dive Attack (Directly in front at z = -95m for INSTANT visibility)
       const { grp, rotors, strobeLight, strobeMesh } = createDroneMesh('hostile');
-      grp.position.set(0, 28, -145);
+      grp.position.set(0, 22, -95);
       currentScene.add(grp);
 
       newDrones.push({
@@ -234,9 +239,9 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         type: 'hostile',
         modelName: 'Shahed-136 Loitering Munition (Direct Dive)',
         position: grp.position,
-        velocity: new THREE.Vector3(0, -0.18, 0.98).normalize(),
-        targetPos: new THREE.Vector3(0, 1.2, 0), // Soldier outpost
-        speed: 15.5,
+        velocity: new THREE.Vector3(0, -0.22, 0.98).normalize(),
+        targetPos: new THREE.Vector3(0, 1.0, 0), // Soldier outpost
+        speed: 13.5,
         health: 100,
         status: 'flying',
         mesh: grp,
@@ -248,7 +253,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     } else if (waveNum === 2) {
       // WAVE 2: Fast FPV Attack Drone (Swooping and slightly evasive)
       const { grp, rotors, strobeLight, strobeMesh } = createDroneMesh('hostile');
-      grp.position.set(25, 24, -135);
+      grp.position.set(18, 18, -100);
       currentScene.add(grp);
 
       newDrones.push({
@@ -256,9 +261,9 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         type: 'hostile',
         modelName: 'High-Speed FPV Kamikaze (Shaped Charge)',
         position: grp.position,
-        velocity: new THREE.Vector3(-0.25, -0.16, 0.95).normalize(),
-        targetPos: new THREE.Vector3(0, 1.2, 0),
-        speed: 19.0,
+        velocity: new THREE.Vector3(-0.2, -0.18, 0.96).normalize(),
+        targetPos: new THREE.Vector3(0, 1.0, 0),
+        speed: 17.5,
         health: 100,
         status: 'flying',
         mesh: grp,
@@ -269,9 +274,9 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       });
     } else {
       // WAVE 3: Dual Swarm Pincer Attack (Left & Right simultaneous approach)
-      [-28, 28].forEach((startX, idx) => {
+      [-22, 22].forEach((startX, idx) => {
         const { grp, rotors, strobeLight, strobeMesh } = createDroneMesh('hostile');
-        grp.position.set(startX, 32, -150 - idx * 10);
+        grp.position.set(startX, 24, -105 - idx * 10);
         currentScene.add(grp);
 
         newDrones.push({
@@ -279,9 +284,9 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           type: 'hostile',
           modelName: `Swarm Drone Delta-${idx + 1}`,
           position: grp.position,
-          velocity: new THREE.Vector3(-startX * 0.015, -0.2, 0.96).normalize(),
-          targetPos: new THREE.Vector3(0, 1.2, 0),
-          speed: 16.0,
+          velocity: new THREE.Vector3(-startX * 0.018, -0.2, 0.96).normalize(),
+          targetPos: new THREE.Vector3(0, 1.0, 0),
+          speed: 14.5,
           health: 100,
           status: 'flying',
           mesh: grp,
@@ -305,80 +310,106 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     if (!container) return;
 
     const width = container.clientWidth;
-    const height = container.clientHeight || 650;
+    const height = container.clientHeight || 660;
 
     // SCENE
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Crisp, High-Contrast Atmospheric Sky & Lighting
+    // Lighting & Atmosphere
     let skyColor = 0x0284c7; // Deep military sky blue
-    let groundColor = 0x475569; // Tactical slate khaki
-    let ambientIntensity = 1.1;
-    let sunIntensity = 1.8;
+    let groundColor = 0x334155; // Tactical slate khaki
+    let ambientIntensity = 1.3;
+    let sunIntensity = 2.0;
 
     if (timeOfDay === 'night') {
       skyColor = 0x020617;
       groundColor = 0x0f172a;
-      ambientIntensity = 0.3;
-      sunIntensity = 0.2;
+      ambientIntensity = 0.35;
+      sunIntensity = 0.3;
     } else if (timeOfDay === 'dusk') {
       skyColor = 0xd97706;
       groundColor = 0x3f2e21;
-      ambientIntensity = 0.7;
-      sunIntensity = 1.4;
+      ambientIntensity = 0.8;
+      sunIntensity = 1.5;
     }
 
     scene.background = new THREE.Color(skyColor);
-    // Light distance haze starting at 180m so everything ahead is 100% visible
-    scene.fog = new THREE.Fog(skyColor, 180, 500);
+    // Light distance fog far away (250m to 600m) so foreground is 100% crystal clear
+    scene.fog = new THREE.Fog(skyColor, 250, 600);
 
     // CAMERA - Looking along -Z (Straight ahead onto the battlefield)
-    const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(62, width / height, 0.1, 1000);
     camera.position.set(0, 1.7, 0); // Soldier eye level: 1.7m
     cameraRef.current = camera;
 
-    // RENDERER
+    // RENDERER with ACES Filmic Tone Mapping for crisp, vibrant realism
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
     rendererRef.current = renderer;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // LIGHTS
+    // LIGHTS: Ambient + Sunlight + Hemisphere sky fill
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e293b, 1.2);
+    scene.add(hemiLight);
+
     const ambientLight = new THREE.AmbientLight(0xffffff, ambientIntensity);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(timeOfDay === 'dusk' ? 0xffaa44 : 0xffffff, sunIntensity);
-    sunLight.position.set(100, 200, -80);
+    sunLight.position.set(80, 180, -60);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
+    // Sun disc in the sky
+    const sunDisc = new THREE.Mesh(
+      new THREE.SphereGeometry(14, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xfffbeb })
+    );
+    sunDisc.position.set(80, 180, -250);
+    scene.add(sunDisc);
+
+    // Dynamic 3D Clouds in Sky
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, opacity: 0.9, transparent: true });
+    for (let i = 0; i < 18; i++) {
+      const cloud = new THREE.Mesh(new THREE.DodecahedronGeometry(8 + (i % 4) * 4, 1), cloudMat);
+      cloud.position.set(
+        (i - 9) * 35 + (Math.random() - 0.5) * 20,
+        55 + Math.random() * 20,
+        -120 - Math.random() * 200
+      );
+      cloud.scale.set(2.2, 0.8, 1.5);
+      scene.add(cloud);
+    }
+
     // 2. BATTLEFIELD TERRAIN & OUTPOST
     // Ground Terrain
-    const terrainSize = 700;
-    const groundGeom = new THREE.PlaneGeometry(terrainSize, terrainSize, 48, 48);
+    const terrainSize = 650;
+    const groundGeom = new THREE.PlaneGeometry(terrainSize, terrainSize, 40, 40);
     const groundMat = new THREE.MeshStandardMaterial({
       color: groundColor,
-      roughness: 0.9,
-      metalness: 0.1,
+      roughness: 0.85,
+      metalness: 0.15,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Perimeter Access Road
-    const roadGeom = new THREE.PlaneGeometry(12, terrainSize);
+    // Dirt & Gravel Runway Path passing through outpost
+    const roadGeom = new THREE.PlaneGeometry(14, terrainSize);
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.95 });
     const road = new THREE.Mesh(roadGeom, roadMat);
     road.rotation.x = -Math.PI / 2;
-    road.position.set(18, 0.04, 0);
+    road.position.set(16, 0.04, 0);
     road.receiveShadow = true;
     scene.add(road);
 
@@ -388,22 +419,22 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
     const bunkerMesh = new THREE.Mesh(
       new THREE.BoxGeometry(16, 5, 12),
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 })
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85, metalness: 0.2 })
     );
     bunkerMesh.position.set(0, 2.5, 0);
     bunkerMesh.castShadow = true;
     bunkerMesh.receiveShadow = true;
     bunkerGroup.add(bunkerMesh);
 
-    // Reinforced Bunker Blast Door
+    // Blast Door
     const doorMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(4, 3.2, 0.3),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 })
+      new THREE.BoxGeometry(4.2, 3.4, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.85 })
     );
-    doorMesh.position.set(0, 1.6, -6.1);
+    doorMesh.position.set(0, 1.7, -6.1);
     bunkerGroup.add(doorMesh);
 
-    // Spinning Radar Mast on Bunker Roof
+    // Spinning Search Radar Mast on Bunker Roof
     const dishMast = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
     dishMast.position.set(0, 6.2, 0);
     bunkerGroup.add(dishMast);
@@ -417,10 +448,10 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     bunkerGroup.add(radarDish);
     scene.add(bunkerGroup);
 
-    // Watchtower on flank (x = -20, z = -10)
+    // Watchtower on flank (x = -18, z = -10)
     const towerGroup = new THREE.Group();
-    towerGroup.position.set(-20, 0, -10);
-    const towerLegMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+    towerGroup.position.set(-18, 0, -10);
+    const towerLegMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 });
     for (const [tx, tz] of [[-1.8, -1.8], [1.8, -1.8], [-1.8, 1.8], [1.8, 1.8]]) {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 12), towerLegMat);
       leg.position.set(tx, 6, tz);
@@ -433,7 +464,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
     // FORWARD DEFENSIVE SANDBAG FORTIFICATION (Directly in front of soldier at z = -3.8)
     const sandbagMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.95 });
-    const sandbagGeom = new THREE.BoxGeometry(1.2, 0.4, 0.55);
+    const sandbagGeom = new THREE.BoxGeometry(1.2, 0.42, 0.6);
 
     const createSandbagWall = (startX: number, startZ: number, count: number, angleDeg: number) => {
       const rad = THREE.MathUtils.degToRad(angleDeg);
@@ -443,7 +474,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           const offset = (i - count / 2) * 1.1;
           bag.position.set(
             startX + Math.cos(rad) * offset,
-            0.2 + layer * 0.38,
+            0.21 + layer * 0.4,
             startZ + Math.sin(rad) * offset
           );
           bag.rotation.y = rad;
@@ -459,15 +490,37 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     createSandbagWall(-4.8, -2.8, 5, -35);
     createSandbagWall(4.8, -2.8, 5, 35);
 
-    // Decorative distance pine trees on horizon
+    // Heavy Wooden Timber Firing Ledge resting on sandbags
+    const timber = new THREE.Mesh(
+      new THREE.BoxGeometry(9, 0.15, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 })
+    );
+    timber.position.set(0, 1.25, -3.8);
+    scene.add(timber);
+
+    // Camouflage Netting Overhead on Timber Posts
+    const camoMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(10, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0x14532d,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.55,
+      })
+    );
+    camoMesh.rotation.x = -Math.PI / 2 + 0.1;
+    camoMesh.position.set(0, 3.2, -1.0);
+    scene.add(camoMesh);
+
+    // Military Pine Trees & Terrain Details
     const treeMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.9 });
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
-    for (let i = 0; i < 30; i++) {
-      const angle = (i / 30) * Math.PI * 2;
-      const dist = 70 + (i % 5) * 25;
+    for (let i = 0; i < 28; i++) {
+      const angle = (i / 28) * Math.PI * 2;
+      const dist = 65 + (i % 5) * 25;
       const tx = Math.cos(angle) * dist;
       const tz = Math.sin(angle) * dist;
-      if (Math.abs(tx) < 15 && tz < 0 && tz > -180) continue; // Keep flight corridor clear
+      if (Math.abs(tx) < 18 && tz < 0 && tz > -160) continue; // Keep flight corridor clear
 
       const tree = new THREE.Group();
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 4), trunkMat);
@@ -484,19 +537,19 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
     // 3. SOLDIER WEAPON: Tactical Anti-Drone Directed Energy / RF Jammer Gun
     const weaponGroup = new THREE.Group();
-    // Weapon housing body
+    // Weapon body
     const bodyMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.18, 0.7),
+      new THREE.BoxGeometry(0.14, 0.18, 0.72),
       new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35, metalness: 0.85 })
     );
     weaponGroup.add(bodyMesh);
 
     // Front Directed Conical RF Antenna (Muzzle Horn)
-    const hornGeom = new THREE.ConeGeometry(0.14, 0.35, 12, 1, true);
+    const hornGeom = new THREE.ConeGeometry(0.15, 0.38, 12, 1, true);
     const hornMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2, metalness: 0.9 });
     const horn = new THREE.Mesh(hornGeom, hornMat);
     horn.rotation.x = -Math.PI / 2;
-    horn.position.set(0, 0, -0.5);
+    horn.position.set(0, 0, -0.52);
     weaponGroup.add(horn);
 
     // Emitter Coils with glowing cyan rings
@@ -519,10 +572,19 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
     const reticleGlass = new THREE.Mesh(
       new THREE.PlaneGeometry(0.07, 0.07),
-      new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
     );
     reticleGlass.position.set(0, 0.13, -0.13);
     weaponGroup.add(reticleGlass);
+
+    // Camo Soldier Hand / Gloves gripping weapon
+    const handMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.06, 0.28),
+      new THREE.MeshStandardMaterial({ color: 0x3f4f34, roughness: 0.9 })
+    );
+    handMesh.rotation.x = Math.PI / 3;
+    handMesh.position.set(0.08, -0.18, 0.05);
+    weaponGroup.add(handMesh);
 
     // Tactical Flashlight attached to weapon
     const flashlight = new THREE.SpotLight(0xffffff, flashlightActive ? 5 : 0, 90, Math.PI / 6, 0.3);
@@ -532,7 +594,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     weaponGroup.add(flashlight.target);
 
     // Laser sight targeting line
-    const laserMat = new THREE.LineBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.75 });
+    const laserMat = new THREE.LineBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.8 });
     const laserGeom = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(0, 0.05, -0.4),
       new THREE.Vector3(0, 0.05, -180),
@@ -546,7 +608,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     scene.add(camera);
 
     // Jammer Energy Beam mesh (hidden until firing)
-    const beamGeom = new THREE.CylinderGeometry(0.1, 3.0, 160, 8, 1, true);
+    const beamGeom = new THREE.CylinderGeometry(0.12, 3.2, 160, 8, 1, true);
     const beamMat = new THREE.MeshBasicMaterial({
       color: 0x06b6d4,
       transparent: true,
@@ -570,7 +632,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     // 4. SPAWN INITIAL THREAT WAVE
     spawnThreatWave(1, scene);
 
-    // 5. EVENT LISTENERS
+    // 5. EVENT LISTENERS: Mouse Look, WASD movement, Firing
     const handleKeyDown = (e: KeyboardEvent) => {
       keysRef.current[e.code] = true;
 
@@ -588,7 +650,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         });
       }
       if (e.code === 'KeyC') {
-        // Toggle Crouch / Take Cover behind sandbags
         setInCover((prev) => !prev);
       }
       if (e.code === 'KeyV') {
@@ -598,7 +659,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         handleRadioHQ();
       }
       if (e.code === 'Space') {
-        // SPACE: Kinetic Interceptor Shot
         handleFireKinetic();
       }
     };
@@ -608,21 +668,23 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     };
 
     const handleMouseDown = (e: MouseEvent) => {
+      isMouseDownRef.current = true;
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+
       if (!isPointerLocked) {
         container.requestPointerLock?.();
-        return;
       }
+
       if (e.button === 0) {
-        // LMB: Fire RF Jammer
         setIsFiringJammer(true);
         soundFx.setJammerBeam(true);
       } else if (e.button === 2) {
-        // RMB: Aim Down Sights (ADS)
         setAimingActive(true);
       }
     };
 
     const handleMouseUp = (e: MouseEvent) => {
+      isMouseDownRef.current = false;
       if (e.button === 0) {
         setIsFiringJammer(false);
         soundFx.setJammerBeam(false);
@@ -632,14 +694,23 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isPointerLocked || !soldierRef.current) return;
-      const sensitivity = 0.0022;
+      if (!soldierRef.current) return;
       const soldier = soldierRef.current;
+      const sensitivity = 0.0024;
 
-      soldier.rotation.yaw -= e.movementX * sensitivity;
-      soldier.rotation.pitch -= e.movementY * sensitivity;
+      if (isPointerLocked) {
+        soldier.rotation.yaw -= e.movementX * sensitivity;
+        soldier.rotation.pitch -= e.movementY * sensitivity;
+      } else if (isMouseDownRef.current) {
+        // Drag-to-look when pointer is not locked
+        const dx = e.clientX - lastMousePosRef.current.x;
+        const dy = e.clientY - lastMousePosRef.current.y;
+        lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+        soldier.rotation.yaw -= dx * sensitivity;
+        soldier.rotation.pitch -= dy * sensitivity;
+      }
+
       soldier.rotation.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, soldier.rotation.pitch));
-
       const deg = Math.round((THREE.MathUtils.radToDeg(-soldier.rotation.yaw) + 360) % 360);
       setHeadingDegrees(deg);
     };
@@ -673,11 +744,10 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       const soldier = soldierRef.current;
       if (!soldier) return;
 
-      // A. Soldier Movement & Physics
-      // Forward is along -Z, Right is along +X
+      // A. Soldier Movement
       const keys = keysRef.current;
       const isShift = keys['ShiftLeft'] || keys['ShiftRight'];
-      const moveSpeed = (isShift ? 7.0 : 3.8) * delta;
+      const moveSpeed = (isShift ? 7.2 : 3.8) * delta;
 
       const forward = new THREE.Vector3(-Math.sin(soldier.rotation.yaw), 0, -Math.cos(soldier.rotation.yaw));
       const right = new THREE.Vector3(forward.z, 0, -forward.x);
@@ -692,9 +762,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         moveDir.normalize();
         soldier.position.addScaledVector(moveDir, moveSpeed);
 
-        // Position bounds:
-        // z: -3.4 (sandbag wall) to +12.0 (inside bunker)
-        // x: -8.0 to +8.0
+        // Bounds: z: -3.4 (sandbags) to +12.0 (bunker), x: -8.0 to +8.0
         soldier.position.x = Math.max(-8, Math.min(8, soldier.position.x));
         soldier.position.z = Math.max(-3.4, Math.min(12, soldier.position.z));
 
@@ -715,7 +783,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       camera.rotation.x = soldier.rotation.pitch;
 
       if (thirdPerson) {
-        // Offset camera behind soldier (along +Z)
         const camOffset = new THREE.Vector3(0, 1.2, 3.2);
         camOffset.applyEuler(new THREE.Euler(soldier.rotation.pitch, soldier.rotation.yaw, 0, 'YXZ'));
         camera.position.copy(soldier.position).add(camOffset);
@@ -723,13 +790,13 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         camera.position.copy(soldier.position);
       }
 
-      // Weapon Aim Down Sight (ADS) Animation
+      // Weapon ADS Animation
       const targetWeaponPos = aimingActive
         ? new THREE.Vector3(0, -0.12, -0.32)
         : new THREE.Vector3(0.24, -0.22, -0.5);
       soldier.weaponGroup.position.lerp(targetWeaponPos, 0.2);
 
-      const targetFov = aimingActive ? 32 : 65;
+      const targetFov = aimingActive ? 32 : 62;
       camera.fov += (targetFov - camera.fov) * 0.2;
       camera.updateProjectionMatrix();
 
@@ -740,7 +807,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       strobeTimer += delta * 8;
       const strobeOn = Math.sin(strobeTimer) > 0;
 
-      // D. DRONE KINEMATICS, AI & IMPACT DETECTION
+      // D. DRONE KINEMATICS, AI & INTERACTION
       let closestLocked: DroneEntity | null = null;
       let minCrosshairDist = 0.92;
       let closestDist = 999;
@@ -763,7 +830,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           closestDist = distToSoldier;
         }
 
-        // Calculate Screen-space projection for tactical HUD brackets
+        // Screen-space projection for tactical HUD brackets
         const screenPos = drone.position.clone();
         screenPos.project(camera);
 
@@ -795,10 +862,10 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
         // RF Jammer Firing & Damage
         if (isFiringJammer && closestLocked?.id === drone.id && drone.status === 'flying') {
-          setJammerBattery((prev) => Math.max(0, prev - delta * 22));
-          drone.health -= delta * 65;
+          setJammerBattery((prev) => Math.max(0, prev - delta * 24));
+          drone.health -= delta * 70;
 
-          // Erratic electronic interference wobble
+          // Erratic interference wobble
           drone.mesh.position.x += (Math.random() - 0.5) * 0.5;
           drone.mesh.position.y += (Math.random() - 0.5) * 0.3;
 
@@ -824,32 +891,28 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
         // Drone Flight Path (Diving straight toward outpost at z = 0)
         if (drone.status === 'flying') {
-          const targetImpactPoint = new THREE.Vector3(0, 1.0, 0); // Outpost sandbag line
+          const targetImpactPoint = new THREE.Vector3(0, 1.0, 0);
           const dir = targetImpactPoint.clone().sub(drone.position).normalize();
-          drone.velocity.lerp(dir, 0.035);
+          drone.velocity.lerp(dir, 0.04);
           drone.position.addScaledVector(drone.velocity, drone.speed * delta);
           drone.mesh.lookAt(drone.position.clone().add(drone.velocity));
 
           // CHECK IMPACT AT OUTPOST
-          // If drone reaches within 4.5m of outpost forward trench (z > -4.0 and z < 3.0)
           if (drone.position.z >= -3.5 && drone.position.y <= 3.5) {
             drone.status = 'destroyed';
             scene.remove(drone.mesh);
             soundFx.playExplosion();
 
-            // Evaluate Soldier Tactical Choice: Did soldier take cover or run away?
-            const soldierDistFromImpact = soldier.position.distanceTo(new THREE.Vector3(0, 1.0, -3.5));
-            const hasRunAway = soldier.position.z >= 4.0; // Ran back towards bunker
+            const hasRunAway = soldier.position.z >= 4.0;
             const isSafe = inCover || hasRunAway;
 
             if (isSafe) {
-              // SUCCESSFUL EVASION / COVER!
               soundFx.playNearMissWhoosh();
               setOutcomeBanner({
                 title: '💥 IMPACT SURVIVED!',
                 subtitle: hasRunAway
                   ? '🏃 Tactical Evasion: You sprinted to the bunker and escaped the blast! (+80 PTS)'
-                  : '🛡️ Cover Effective: You ducked behind sandbags and survived the detonation! (+80 PTS)',
+                  : '🛡️ Cover Effective: You ducked behind sandbags and survived detonation! (+80 PTS)',
                 type: 'evaded',
               });
               setBaseIntegrity((b) => Math.max(0, b - 10));
@@ -860,7 +923,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
                 success: true,
               });
             } else {
-              // SOLDIER WAS STANDING IN THE OPEN AT THE BLAST ZONE!
               setOutcomeBanner({
                 title: '💀 DIRECT HIT TAKEN!',
                 subtitle: 'Soldier was caught in the open! You failed to shoot down or evade the drone! (-50 PTS)',
@@ -876,7 +938,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
             }
           }
         } else if (drone.status === 'falling') {
-          // Spiraling crash
           drone.position.y -= 22 * delta;
           drone.position.z += 8 * delta;
           drone.mesh.rotation.x += 0.2;
@@ -892,7 +953,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       setActiveDronesList(activeHudList);
       setLockedDrone(closestLocked);
       setNearestDist(Math.round(closestDist));
-      const estTime = closestDist / 16.0;
+      const estTime = closestDist / 14.5;
       setImpactTimeEst(Math.max(0, Math.round(estTime * 10) / 10));
 
       // Jammer visual energy beam
@@ -906,14 +967,14 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       }
 
       // Alert level
-      if (closestDist < 50) {
-        setCombatAlertText(`⚠️ CRITICAL: KAMIKAZE DRONE ${Math.round(closestDist)}M! SHOOT OR EVADE NOW!`);
+      if (closestDist < 45) {
+        setCombatAlertText(`⚠️ CRITICAL: DRONE ${Math.round(closestDist)}M! SHOOT OR EVADE NOW!`);
         setAlertLevel('high');
-      } else if (closestDist < 120) {
+      } else if (closestDist < 90) {
         setCombatAlertText(`🚨 THREAT INCOMING: ${Math.round(closestDist)}M DIRECTLY AHEAD`);
         setAlertLevel('med');
       } else {
-        setCombatAlertText('AIRSPACE SCANNING // INCOMING DRONE DETECTED');
+        setCombatAlertText('SCANNING AIRSPACE // INCOMING KAMIKAZE DRONE');
         setAlertLevel('low');
       }
 
@@ -975,7 +1036,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
     soundFx.playButtonClick();
     const nextW = (currentWave % 3) + 1;
     setCurrentWave(nextW);
-    waveRef.current = nextW;
     if (sceneRef.current) {
       spawnThreatWave(nextW, sceneRef.current);
     }
@@ -1003,8 +1063,8 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
   };
 
   return (
-    <div className="relative w-full h-[680px] bg-black rounded-2xl overflow-hidden border border-cyan-500/40 shadow-2xl select-none font-mono">
-      {/* 3D WebGL Canvas Container */}
+    <div className="relative w-full h-[660px] bg-black rounded-2xl overflow-hidden border-2 border-cyan-500/50 shadow-2xl select-none font-mono">
+      {/* 3D WebGL Canvas Container - 100% VISIBLE AND UNBLURRED */}
       <div ref={containerRef} className="w-full h-full cursor-crosshair" />
 
       {/* Night Vision Goggles (NVG) Green Phosphor Overlay */}
@@ -1024,27 +1084,6 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         </div>
       )}
 
-      {/* Pointer Lock Instruction Banner when unlocked */}
-      {!isPointerLocked && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 space-y-4 z-40">
-          <div className="w-16 h-16 rounded-2xl bg-cyan-950 border border-cyan-500 flex items-center justify-center text-cyan-400 tactical-glow-cyan">
-            <Crosshair className="w-8 h-8 animate-pulse" />
-          </div>
-          <h2 className="text-2xl font-tactical font-black text-slate-100">
-            CLICK TO TAKE COMMAND OF VIRTUAL SOLDIER
-          </h2>
-          <div className="max-w-md bg-slate-900/90 border border-cyan-500/40 rounded-xl p-4 text-xs text-left text-slate-300 space-y-2">
-            <p className="text-cyan-400 font-bold uppercase tracking-wider">🎯 SOLDIER MISSION DIRECTIVE:</p>
-            <p>1. <span className="text-white font-bold">Drone samne se seedha aapki taraf aa raha hai!</span></p>
-            <p>2. <span className="text-emerald-400 font-bold">SHOOT KAREIN</span>: Hold <span className="text-cyan-300 font-bold">Left Click</span> (RF Jammer Beam) ya press <span className="text-cyan-300 font-bold">SPACE</span> (Kinetic Shot).</p>
-            <p>3. <span className="text-amber-400 font-bold">RUN / COVER LEIN</span>: Press <span className="text-amber-300 font-bold">C</span> to duck behind sandbags OR hold <span className="text-amber-300 font-bold">Shift+S</span> to sprint into the bunker!</p>
-          </div>
-          <button className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-lg">
-            ENGAGE 3D COMBAT SIMULATION
-          </button>
-        </div>
-      )}
-
       {/* 3D SCREEN-SPACE HUD TARGET BRACKETS FLOATING OVER INCOMING DRONES */}
       {activeDronesList.map((d) => {
         if (!d.onScreen || d.status === 'destroyed' || d.screenX === undefined || d.screenY === undefined) return null;
@@ -1060,10 +1099,10 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           >
             {/* Pulsing Tactical Diamond */}
             <div className="relative flex flex-col items-center">
-              <div className="w-10 h-10 border-2 border-red-500 rotate-45 animate-pulse bg-red-500/20 flex items-center justify-center shadow-[0_0_15px_#ef4444]" />
-              <div className="mt-2 px-2.5 py-1 bg-black/90 border border-red-500 rounded text-[10px] text-red-300 font-bold flex flex-col items-center whitespace-nowrap shadow-xl">
+              <div className="w-12 h-12 border-2 border-red-500 rotate-45 animate-pulse bg-red-500/25 flex items-center justify-center shadow-[0_0_20px_#ef4444]" />
+              <div className="mt-2.5 px-3 py-1 bg-black/95 border border-red-500 rounded text-[11px] text-red-300 font-bold flex flex-col items-center whitespace-nowrap shadow-2xl">
                 <span className="text-red-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> HOSTILE KAMIKAZE
+                  <AlertTriangle className="w-3.5 h-3.5" /> HOSTILE KAMIKAZE DRONE
                 </span>
                 <span>RANGE: {d.dist}M | HP: {d.health}%</span>
               </div>
@@ -1108,7 +1147,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
         {/* Big Countdown / Range Display */}
         {nearestDist < 200 && (
-          <div className="bg-slate-950/90 border-2 border-red-500/80 rounded-xl px-4 py-1.5 flex items-center gap-3 text-red-400 font-black shadow-lg">
+          <div className="bg-slate-950/95 border-2 border-red-500 rounded-xl px-4 py-1.5 flex items-center gap-3 text-red-400 font-black shadow-2xl">
             <span>TARGET RANGE: <span className="text-white text-sm">{nearestDist}M</span></span>
             <span className="text-slate-600">|</span>
             <span>IMPACT IN: <span className="text-amber-400 text-sm">{impactTimeEst}s</span></span>
@@ -1135,9 +1174,9 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
 
       {/* PROMINENT TACTICAL DIRECTIVE BANNER (The 2 Choices: SHOOT vs EVADE) */}
       <div className="absolute top-16 left-4 z-20 pointer-events-none max-w-sm">
-        <div className="bg-slate-950/90 border border-cyan-500/50 rounded-xl p-3 shadow-2xl backdrop-blur space-y-1.5 text-[11px]">
+        <div className="bg-slate-950/95 border border-cyan-500/60 rounded-xl p-3 shadow-2xl backdrop-blur space-y-1.5 text-[11px]">
           <div className="text-cyan-400 font-bold uppercase tracking-wide flex items-center gap-1.5 pb-1 border-b border-slate-800">
-            <Shield className="w-3.5 h-3.5" /> TACTICAL RESPONSE OPTIONS:
+            <Shield className="w-3.5 h-3.5" /> SOLDIER TACTICAL MISSION:
           </div>
           <div className="flex items-center gap-2 text-slate-200">
             <span className="px-1.5 py-0.5 rounded bg-cyan-900 border border-cyan-500 text-cyan-300 font-bold">1. SHOOT</span>
@@ -1209,7 +1248,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         </div>
 
         {/* Center: Soldier Tactical Action Buttons (Clickable + Keybinds) */}
-        <div className="flex items-center gap-2 bg-slate-950/95 border border-cyan-500/40 rounded-xl p-2.5 pointer-events-auto shadow-2xl text-xs">
+        <div className="flex items-center gap-2 bg-slate-950/95 border border-cyan-500/50 rounded-xl p-2.5 pointer-events-auto shadow-2xl text-xs">
           {/* Action 1: Shoot RF Jammer */}
           <button
             onMouseDown={() => {
@@ -1220,7 +1259,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
               setIsFiringJammer(false);
               soundFx.setJammerBeam(false);
             }}
-            className="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20"
+            className="px-3.5 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20 active:scale-95"
           >
             <Zap className="w-4 h-4" /> HOLD: RF JAMMER (LMB)
           </button>
@@ -1228,7 +1267,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           {/* Action 2: Kinetic Airburst Shot */}
           <button
             onClick={handleFireKinetic}
-            className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-1.5 shadow-md shadow-red-500/20"
+            className="px-3.5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-1.5 shadow-md shadow-red-500/20 active:scale-95"
           >
             <Crosshair className="w-4 h-4" /> KINETIC SHOT (SPACE)
           </button>
@@ -1236,7 +1275,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           {/* Action 3: Take Cover behind Sandbags */}
           <button
             onClick={() => setInCover(!inCover)}
-            className={`px-3 py-2 rounded-lg border font-bold transition flex items-center gap-1.5 ${
+            className={`px-3.5 py-2.5 rounded-lg border font-bold transition flex items-center gap-1.5 active:scale-95 ${
               inCover
                 ? 'bg-emerald-950 border-emerald-500 text-emerald-300 shadow-[0_0_12px_#10b981]'
                 : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -1249,11 +1288,11 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           <button
             onClick={() => {
               if (soldierRef.current) {
-                soldierRef.current.position.z = 8.0; // Instantly retreat to bunker
+                soldierRef.current.position.z = 8.0;
                 soundFx.playFootstep();
               }
             }}
-            className="px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold transition flex items-center gap-1.5 shadow-md"
+            className="px-3.5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold transition flex items-center gap-1.5 shadow-md active:scale-95"
             title="Retreat into reinforced command bunker"
           >
             <ArrowRight className="w-4 h-4" /> RUN TO BUNKER (S)
@@ -1262,7 +1301,7 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
           {/* Action 5: Night Vision Toggle */}
           <button
             onClick={() => setNvgActive(!nvgActive)}
-            className={`p-2 rounded-lg border transition ${
+            className={`p-2.5 rounded-lg border transition ${
               nvgActive ? 'bg-emerald-950 border-emerald-500 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-400'
             }`}
             title="Toggle Night Vision (N)"
@@ -1272,9 +1311,9 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         </div>
 
         {/* Right: Key Controls Reference */}
-        <div className="bg-slate-950/85 border border-slate-800 rounded-xl p-2.5 text-[10px] text-slate-400 space-y-1">
-          <div><span className="text-cyan-400 font-bold">W / S</span> : Walk forward / Run to bunker</div>
-          <div><span className="text-cyan-400 font-bold">LMB / SPACE</span> : Shoot Jammer / Kinetic</div>
+        <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 text-[10px] text-slate-400 space-y-1">
+          <div><span className="text-cyan-400 font-bold">W / S</span> : Walk / Run to bunker</div>
+          <div><span className="text-cyan-400 font-bold">LMB / SPACE</span> : Jammer / Kinetic Shot</div>
           <div><span className="text-cyan-400 font-bold">C</span> : Take Cover | <span className="text-cyan-400 font-bold">RMB</span> : Zoom Scope</div>
         </div>
       </div>
