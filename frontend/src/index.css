@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-tactical: 'Orbitron', 'Inter', sans-serif;
+
+  --radar-cyan: #06b6d4;
+  --radar-green: #10b981;
+  --radar-amber: #f59e0b;
+  --radar-red: #ef4444;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #070b14;
+  color: #e2e8f0;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Tactical Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090e1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0ea5e9;
+}
+
+/* Radar Sweep Pulse & Glows */
+@keyframes radar-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ping-subtle {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.animate-radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+}
+
+.animate-ping-subtle {
+  animation: ping-subtle 2s ease-in-out infinite;
+}
+
+.tactical-glow-cyan {
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.35);
+}
+
+.tactical-glow-green {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+}
+
+.tactical-glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.45);
+}
+
+.tactical-glass {
+  background: rgba(13, 20, 36, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.tactical-glass-hover:hover {
+  background: rgba(18, 28, 51, 0.85);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.font-tactical {
+  font-family: var(--font-tactical);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}

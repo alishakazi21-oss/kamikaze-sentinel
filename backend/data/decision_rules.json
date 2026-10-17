@@ -1,0 +1,160 @@
+{
+  "weights": {
+    "detection": 0.30,
+    "classification": 0.30,
+    "decision": 0.40
+  },
+  "latency_decay": {
+    "difficulty_1": { "T_full": 6.0, "T_max": 20.0 },
+    "difficulty_2": { "T_full": 4.5, "T_max": 15.0 },
+    "difficulty_3": { "T_full": 3.0, "T_max": 10.0 }
+  },
+  "penalties": {
+    "missed_hostile": 30.0,
+    "friendly_fire_interception": 40.0,
+    "civil_drone_interception": 25.0,
+    "false_alarm_interception": 15.0
+  },
+  "rules": [
+    {
+      "id": "RULE_HOSTILE_CLOSE_INTERCEPT",
+      "true_class": "hostile",
+      "trainee_classification": "hostile",
+      "trainee_response": "authorise_protective_response",
+      "proximity_threshold_m": 2500,
+      "outcome": "Optimal",
+      "points": 100,
+      "explanation": "Immediate protective interception authorized against confirmed hostile threat penetrating tactical perimeter."
+    },
+    {
+      "id": "RULE_HOSTILE_FAR_ALERT",
+      "true_class": "hostile",
+      "trainee_classification": "hostile",
+      "trainee_response": "raise_alert",
+      "proximity_threshold_m": 99999,
+      "outcome": "Acceptable",
+      "points": 85,
+      "explanation": "Alert raised on hostile target; timely escalation required as it nears perimeter."
+    },
+    {
+      "id": "RULE_HOSTILE_MONITOR_DANGEROUS",
+      "true_class": "hostile",
+      "trainee_classification": "hostile",
+      "trainee_response": "continue_monitoring",
+      "proximity_threshold_m": 1500,
+      "outcome": "Dangerous error",
+      "points": 10,
+      "explanation": "Hostile threat inside critical perimeter was only monitored without countermeasures, risking base breach."
+    },
+    {
+      "id": "RULE_HOSTILE_VERIFY_DELAY",
+      "true_class": "hostile",
+      "trainee_classification": "hostile",
+      "trainee_response": "request_verification",
+      "proximity_threshold_m": 2000,
+      "outcome": "Under-reaction",
+      "points": 50,
+      "explanation": "Hostile threat at close range had verification requested rather than executing immediate defensive protocols."
+    },
+    {
+      "id": "RULE_FRIENDLY_CLEARED_MONITOR",
+      "true_class": "friendly",
+      "trainee_classification": "friendly",
+      "trainee_response": "continue_monitoring",
+      "proximity_threshold_m": 99999,
+      "outcome": "Optimal",
+      "points": 100,
+      "explanation": "Friendly asset correctly identified with IFF protocol and monitored safely."
+    },
+    {
+      "id": "RULE_FRIENDLY_REQUEST_VERIFY",
+      "true_class": "friendly",
+      "trainee_classification": "friendly",
+      "trainee_response": "request_verification",
+      "proximity_threshold_m": 99999,
+      "outcome": "Acceptable",
+      "points": 80,
+      "explanation": "Friendly asset observed; secondary IFF verification requested."
+    },
+    {
+      "id": "RULE_FRIENDLY_OVERREACTION_ALERT",
+      "true_class": "friendly",
+      "trainee_classification": "friendly",
+      "trainee_response": "raise_alert",
+      "proximity_threshold_m": 99999,
+      "outcome": "Over-reaction",
+      "points": 50,
+      "explanation": "Full alert raised for verified friendly asset causing unnecessary tactical disturbance."
+    },
+    {
+      "id": "RULE_FRIENDLY_FRIENDLY_FIRE",
+      "true_class": "friendly",
+      "trainee_classification": "hostile",
+      "trainee_response": "authorise_protective_response",
+      "proximity_threshold_m": 99999,
+      "outcome": "Dangerous error",
+      "points": 0,
+      "explanation": "CRITICAL: Trainee authorized kinetic/jamming countermeasure on a friendly blue-force drone."
+    },
+    {
+      "id": "RULE_CIVIL_DEESCALATE",
+      "true_class": "civil",
+      "trainee_classification": "civil",
+      "trainee_response": "request_verification",
+      "proximity_threshold_m": 99999,
+      "outcome": "Optimal",
+      "points": 100,
+      "explanation": "Commercial drone in airspace handled with verification and ATC cross-check."
+    },
+    {
+      "id": "RULE_CIVIL_ALERT",
+      "true_class": "civil",
+      "trainee_classification": "civil",
+      "trainee_response": "raise_alert",
+      "proximity_threshold_m": 1200,
+      "outcome": "Acceptable",
+      "points": 85,
+      "explanation": "Civilian drone approached restricted perimeter; air alert appropriately raised."
+    },
+    {
+      "id": "RULE_CIVIL_OVERREACTION_INTERCEPT",
+      "true_class": "civil",
+      "trainee_classification": "civil",
+      "trainee_response": "authorise_protective_response",
+      "proximity_threshold_m": 99999,
+      "outcome": "Over-reaction",
+      "points": 40,
+      "explanation": "Unauthorized kinetic engagement of civil drone prior to escalation protocols."
+    },
+    {
+      "id": "RULE_FALSE_ALARM_DISMISS",
+      "true_class": "false_alarm",
+      "trainee_classification": "false_alarm",
+      "trainee_response": "continue_monitoring",
+      "proximity_threshold_m": 99999,
+      "outcome": "Optimal",
+      "points": 100,
+      "explanation": "Biological track (bird flock / radar clutter) correctly dismissed without wasting tactical bandwidth."
+    },
+    {
+      "id": "RULE_FALSE_ALARM_INTERCEPT",
+      "true_class": "false_alarm",
+      "trainee_classification": "hostile",
+      "trainee_response": "authorise_protective_response",
+      "proximity_threshold_m": 99999,
+      "outcome": "Dangerous error",
+      "points": 20,
+      "explanation": "Air defense engagement authorized against avian/radar clutter, depleting ammunition."
+    },
+    {
+      "id": "RULE_DEFAULT_FALLBACK",
+      "true_class": "*",
+      "trainee_classification": "*",
+      "trainee_response": "*",
+      "proximity_threshold_m": 99999,
+      "outcome": "Acceptable",
+      "points": 60,
+      "explanation": "Standard protocol executed under ambiguous radar telemetry."
+    }
+  ]
+}
