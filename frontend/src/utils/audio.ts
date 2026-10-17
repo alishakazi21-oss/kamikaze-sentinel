@@ -243,6 +243,80 @@ class TacticalAudioEngine {
       osc.stop(ctx.currentTime + 0.04);
     } catch {}
   }
+
+  // Kinetic high-velocity rifle/interceptor shot
+  public playKineticFire() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      // Crack oscillator
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1100, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.09);
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch {}
+  }
+
+  // Whoosh sound when drone narrowly misses or is evaded
+  public playNearMissWhoosh() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const bufferSize = ctx.sampleRate * 0.3;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(300, ctx.currentTime);
+      filter.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.15);
+      filter.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.3);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start();
+    } catch {}
+  }
+
+  // Red alert siren pulse
+  public playThreatSiren() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.18);
+      osc.frequency.linearRampToValueAtTime(520, ctx.currentTime + 0.36);
+
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.38);
+    } catch {}
+  }
 }
 
 export const soundFx = new TacticalAudioEngine();
