@@ -631,3 +631,43 @@ def get_ai_prediction(payload: AIAssistRequest):
         explanation=result["explanation"],
         feature_importance=result["feature_importance"]
     )
+
+
+# -------------------------------------------------------------
+# 8. Top 3 Innovation Endpoints: Per-Skill Adaptive & Swarm Resolution
+# -------------------------------------------------------------
+@app.get("/api/adaptive/per-skill/{trainee_id}")
+def get_per_skill_adaptive_profile(trainee_id: str, db: Session = Depends(get_db)):
+    trainee = db.query(Trainee).filter(Trainee.id == trainee_id).first()
+    if not trainee:
+        raise HTTPException(status_code=404, detail="Trainee not found")
+
+    events = db.query(TargetEvent).join(DbSession).filter(
+        DbSession.trainee_id == trainee_id
+    ).all()
+
+    event_dicts = [
+        {
+            "target_id": e.target_id,
+            "true_class": e.true_class,
+            "trainee_classification": e.trainee_classification,
+            "trainee_response": e.trainee_response,
+            "decision_outcome": e.decision_outcome,
+            "detection_latency": e.detected_at,
+            "action": e.trainee_response or "",
+            "is_swarm_trap": "SWM" in e.target_id or "MERGED" in e.target_id
+        }
+        for e in events
+    ]
+
+    profile = adaptive_engine.evaluate_per_skill_profile(event_dicts)
+    return {
+        "trainee": {
+            "id": trainee.id,
+            "callsign": trainee.callsign,
+            "rank": trainee.rank,
+            "difficulty": trainee.current_difficulty
+        },
+        "per_skill_analysis": profile
+    }
+

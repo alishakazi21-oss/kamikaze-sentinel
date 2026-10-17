@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Battlefield3DSimulator } from '../components/Battlefield3DSimulator';
 import { AARDecisionTreeVisualizer } from '../components/AARDecisionTreeVisualizer';
 import {
@@ -25,6 +25,11 @@ import {
   TrendingUp,
   ArrowRight,
   Sliders,
+  Cpu,
+  Layers,
+  Sparkles,
+  BarChart2,
+  Compass,
 } from 'lucide-react';
 import { TraineeProfile, TargetScoreDetail, AARReport } from '../types';
 import { soundFx } from '../utils/audio';
@@ -47,6 +52,37 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
   const [difficulty, setDifficulty] = useState<number>(currentTrainee?.current_difficulty || 2);
   const [seed, setSeed] = useState<number>(777);
   const [simKey, setSimKey] = useState<number>(1);
+
+  // TOP 3 INNOVATION FEATURES STATE
+  // Innovation 1: Sensor Reality Engine
+  const [sensorNoiseLevel, setSensorNoiseLevel] = useState<'normal' | 'degraded' | 'jammed'>('normal');
+  const [clutterActive, setClutterActive] = useState<boolean>(true);
+  const [dropoutsActive, setDropoutsActive] = useState<boolean>(true);
+
+  // Innovation 2: Swarm Resolution Trap
+  const [swarmTrapActive, setSwarmTrapActive] = useState<boolean>(false);
+  const [swarmResolutionOutcome, setSwarmResolutionOutcome] = useState<{
+    status: 'pending' | 'resolved' | 'trapped';
+    message: string;
+    points: number;
+  } | null>(null);
+
+  // Innovation 3: Per-Skill Adaptive Training Profile
+  const [skillProfile, setSkillProfile] = useState<{
+    low_rcs_detection: number;
+    iff_discrimination: number;
+    swarm_resolution: number;
+    ew_countermeasures: number;
+    tactical_evasion: number;
+  }>({
+    low_rcs_detection: 88,
+    iff_discrimination: 94,
+    swarm_resolution: 42, // Weak area flagged!
+    ew_countermeasures: 90,
+    tactical_evasion: 85,
+  });
+
+  const [activeInnovationTab, setActiveInnovationTab] = useState<'sensor' | 'swarm_trap' | 'adaptive'>('swarm_trap');
 
   // Tactical Decision-Making System (Point 6)
   const [selectedResponse, setSelectedResponse] = useState<string | null>(null);
@@ -73,6 +109,20 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
   const [showAARModal, setShowAARModal] = useState<boolean>(false);
   const [completedDrillData, setCompletedDrillData] = useState<any>(null);
 
+  // Fetch per-skill adaptive data from backend if trainee exists
+  useEffect(() => {
+    if (currentTrainee) {
+      fetch(`/api/adaptive/per-skill/${currentTrainee.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.per_skill_analysis?.skills) {
+            setSkillProfile(data.per_skill_analysis.skills);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentTrainee]);
+
   // Randomize Seed (Point 9)
   const handleRandomizeSeed = () => {
     soundFx.playButtonClick();
@@ -89,23 +139,88 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
       setTimeOfDay('day');
       setDifficulty(2);
       setSeed(101);
+      setSwarmTrapActive(false);
     } else if (presetType === 'swarm') {
       setThreatType('swarm_wedge');
       setTimeOfDay('dusk');
       setDifficulty(3);
       setSeed(777);
+      setSwarmTrapActive(true);
     } else if (presetType === 'friendly') {
       setThreatType('friendly_test');
       setTimeOfDay('day');
       setDifficulty(1);
       setSeed(404);
+      setSwarmTrapActive(false);
     } else if (presetType === 'night') {
       setThreatType('single');
       setTimeOfDay('night');
       setDifficulty(3);
       setSeed(999);
+      setSwarmTrapActive(false);
     }
     setSimKey((prev) => prev + 1);
+  };
+
+  // Innovation 2: Swarm Resolution Trap Handlers
+  const handleActivateSwarmTrap = () => {
+    soundFx.playTargetLock();
+    setThreatType('swarm_wedge');
+    setSwarmTrapActive(true);
+    setSwarmResolutionOutcome({
+      status: 'pending',
+      message: 'ANOMALOUS CLUSTER CONTACT DETECTED: TRK-MERGED-01 | RCS: +5.2 dBsm (High Composite RCS). Evaluate before firing!',
+      points: 0,
+    });
+    setSimKey((k) => k + 1);
+  };
+
+  const handleResolveSwarmTrap = (resolveCorrectly: boolean) => {
+    soundFx.playButtonClick();
+    if (resolveCorrectly) {
+      soundFx.playTargetLock();
+      setSwarmResolutionOutcome({
+        status: 'resolved',
+        message: '🎯 SWARM RESOLUTION TRAP DEFEATED! Trainee recognized high-RCS composite return and resolved 3-drone formation. Multi-target RF Jamming authorized! (+40 PTS)',
+        points: 40,
+      });
+      // Update trainee skill score live
+      setSkillProfile((prev) => ({
+        ...prev,
+        swarm_resolution: Math.min(100, prev.swarm_resolution + 18),
+      }));
+      // Trigger jammer neutralization in 3D simulator
+      setSelectedResponse('authorise_protective_response');
+    } else {
+      soundFx.playExplosion();
+      setSwarmResolutionOutcome({
+        status: 'trapped',
+        message: '🚨 SWARM RESOLUTION TRAP TRIGGERED! Trainee treated merged blip as a single drone and fired single-target countermeasure! 2 secondary drones breached perimeter! (-30 PTS)',
+        points: -30,
+      });
+      setSkillProfile((prev) => ({
+        ...prev,
+        swarm_resolution: Math.max(15, prev.swarm_resolution - 12),
+      }));
+    }
+  };
+
+  // Innovation 3: Auto-Prescribe Adaptive Targeted Drill
+  const handleAutoPrescribeAdaptiveDrill = () => {
+    soundFx.playTargetLock();
+    // Weak area is Swarm Resolution (42%)
+    setThreatType('swarm_wedge');
+    setTerrain('border');
+    setSensorNoiseLevel('degraded');
+    setSwarmTrapActive(true);
+    setDifficulty(3);
+    setSeed(888);
+    setSwarmResolutionOutcome({
+      status: 'pending',
+      message: 'ADAPTIVE REMEDIATION SORTIE LOADED: 3-Drone Swarm with Merged Radar Traps. Practice identifying multi-RCS signatures!',
+      points: 0,
+    });
+    setSimKey((k) => k + 1);
   };
 
   // Trainee Tactical Decision Selection (Point 6)
@@ -282,7 +397,7 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
                     timeOfDay === tod.id ? 'bg-cyan-600 text-slate-950' : 'text-slate-400 hover:bg-slate-800'
                   }`}
                 >
-                  <Icon className="w-3 h-3" /> {tod.label}
+                  <Icon className="w-3.5 h-3.5" /> {tod.label}
                 </button>
               );
             })}
@@ -378,7 +493,263 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
         onFinishDrill={handleDrillFinished}
       />
 
-      {/* 4. LIVE 3-PILLAR SCORING DASHBOARD (Point 7) */}
+      {/* 4. TOP 3 INNOVATION FEATURES SUITE (Sensor Reality, Swarm Trap, Per-Skill Adaptive) */}
+      <div className="bg-slate-900/95 border-2 border-cyan-500/50 rounded-2xl p-5 shadow-2xl space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div>
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-500/60 font-bold text-xs uppercase">
+              <Sparkles className="w-3.5 h-3.5" /> ASTRA VEER — TOP 3 INNOVATION FEATURES
+            </div>
+            <h2 className="text-xl font-tactical font-black text-slate-100 mt-1">
+              ADVANCED COUNTER-DRONE COGNITIVE SUITE
+            </h2>
+          </div>
+
+          {/* Feature Selector Tabs */}
+          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button
+              onClick={() => setActiveInnovationTab('swarm_trap')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                activeInnovationTab === 'swarm_trap'
+                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" /> 2. SWARM RESOLUTION TRAP
+            </button>
+
+            <button
+              onClick={() => setActiveInnovationTab('sensor')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                activeInnovationTab === 'sensor'
+                  ? 'bg-cyan-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5" /> 1. SENSOR REALITY ENGINE
+            </button>
+
+            <button
+              onClick={() => setActiveInnovationTab('adaptive')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                activeInnovationTab === 'adaptive'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" /> 3. PER-SKILL ADAPTIVE
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: SENSOR REALITY ENGINE */}
+        {activeInnovationTab === 'sensor' && (
+          <div className="space-y-3">
+            <div className="text-xs text-slate-300 leading-relaxed">
+              <span className="text-cyan-400 font-bold">1. Sensor Reality Engine:</span> Simulated sensors mein realistic Gaussian measurement noise, false alarms (avian clutter blips), building horizon masking aur signal dropouts introduce karta hai taaki trainee perfect laboratory conditions ki jagah real battlefield sensor data analyze karna seekhe.
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <span className="text-[11px] text-slate-400 font-bold">RADAR MEASUREMENT NOISE</span>
+                <div className="flex gap-1.5">
+                  {(['normal', 'degraded', 'jammed'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => {
+                        soundFx.playButtonClick();
+                        setSensorNoiseLevel(mode);
+                      }}
+                      className={`flex-1 py-1 rounded text-[10px] font-bold uppercase transition ${
+                        sensorNoiseLevel === mode ? 'bg-cyan-600 text-slate-950' : 'bg-slate-900 text-slate-400'
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  {sensorNoiseLevel === 'jammed'
+                    ? 'EW Jamming: ±85m range error, ±3.5° bearing jitter'
+                    : sensorNoiseLevel === 'degraded'
+                    ? 'Atmospheric Fog: ±35m range error, ±1.8° jitter'
+                    : 'Clear Radar: ±8m normal Gaussian noise'}
+                </div>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <span className="text-[11px] text-slate-400 font-bold">FALSE ALARMS / CLUTTER</span>
+                <button
+                  onClick={() => {
+                    soundFx.playButtonClick();
+                    setClutterActive(!clutterActive);
+                  }}
+                  className={`w-full py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    clutterActive ? 'bg-emerald-950 border border-emerald-500 text-emerald-300' : 'bg-slate-900 text-slate-400'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {clutterActive ? 'BIOLOGICAL AVIAN BLIPS ACTIVE' : 'CLUTTER FILTERED'}
+                </button>
+                <div className="text-[10px] text-slate-500">
+                  Injects low-RCS biological bird flutter (-22 dBsm) into radar sweeps.
+                </div>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <span className="text-[11px] text-slate-400 font-bold">RADAR HORIZON & DROPOUTS</span>
+                <button
+                  onClick={() => {
+                    soundFx.playButtonClick();
+                    setDropoutsActive(!dropoutsActive);
+                  }}
+                  className={`w-full py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    dropoutsActive ? 'bg-amber-950 border border-amber-500 text-amber-300' : 'bg-slate-900 text-slate-400'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {dropoutsActive ? 'TERRAIN MASKING ENABLED' : 'CONSTANT TRACKING'}
+                </button>
+                <div className="text-[10px] text-slate-500">
+                  Low-altitude targets drop off radar when occluded by buildings/hills.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: SWARM RESOLUTION TRAP */}
+        {activeInnovationTab === 'swarm_trap' && (
+          <div className="space-y-3">
+            <div className="text-xs text-slate-300 leading-relaxed">
+              <span className="text-amber-400 font-bold">2. Swarm Resolution Trap:</span> Jab multiple simulated drones paas-paas fly karte hain (&lt;3.2° beamwidth &amp; &lt;40m range bin), toh radar hardware unhe ek single merged contact ke roop mein display karta hai. System trainee ki ability check karta hai ki kya woh anomalous high RCS (+5.2 dBsm) ko pehchan kar swarm split karta hai ya single-target misunderstanding mein trap hota hai!
+            </div>
+
+            <div className="bg-slate-950 border border-amber-500/40 rounded-xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping" />
+                  <span className="font-bold text-amber-300 text-xs">
+                    RADAR MERGED CONTACT: TRK-MERGED-01 | RCS: +5.2 dBsm (ANOMALOUS COMPOSITE RETURN)
+                  </span>
+                </div>
+                <button
+                  onClick={handleActivateSwarmTrap}
+                  className="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-md"
+                >
+                  TRIGGER SWARM TRAP SCENARIO
+                </button>
+              </div>
+
+              {/* Trainee Action Evaluation */}
+              <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs text-slate-400">
+                  Select your tactical classification on this merged radar contact:
+                </div>
+
+                <div className="flex gap-2">
+                  {/* Trainee makes mistake: engages single */}
+                  <button
+                    onClick={() => handleResolveSwarmTrap(false)}
+                    className="px-3 py-2 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-500 text-red-300 font-bold text-xs transition flex items-center gap-1.5"
+                  >
+                    <XCircle className="w-4 h-4 text-red-400" /> ENGAGE AS SINGLE DRONE (TRAP)
+                  </button>
+
+                  {/* Trainee beats the trap: resolves multi-target */}
+                  <button
+                    onClick={() => handleResolveSwarmTrap(true)}
+                    className="px-3 py-2 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500 text-emerald-300 font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 🔍 RESOLVE SWARM FORMATION (+40 PTS)
+                  </button>
+                </div>
+              </div>
+
+              {/* Feedback outcome */}
+              {swarmResolutionOutcome && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-bold leading-relaxed ${
+                    swarmResolutionOutcome.status === 'resolved'
+                      ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300'
+                      : swarmResolutionOutcome.status === 'trapped'
+                      ? 'bg-red-950/90 border-red-500 text-red-300 animate-pulse'
+                      : 'bg-slate-900 border-amber-500/50 text-amber-300'
+                  }`}
+                >
+                  {swarmResolutionOutcome.message}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: PER-SKILL ADAPTIVE TRAINING */}
+        {activeInnovationTab === 'adaptive' && (
+          <div className="space-y-3">
+            <div className="text-xs text-slate-300 leading-relaxed">
+              <span className="text-emerald-400 font-bold">3. Per-Skill Adaptive Training:</span> System trainee ki performance ko single composite score ki jagah 5 alag-alag core tactical skills par track karta hai, aur weak areas identify karke targeted remediation scenario automatically calibrate aur prescribe karta hai.
+            </div>
+
+            {/* 5-Skill Mastery Matrix */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 pt-1">
+              {[
+                { label: '1. LOW-RCS DETECTION', score: skillProfile.low_rcs_detection, desc: 'Early velocity Doppler acquisition' },
+                { label: '2. IFF DISCRIMINATION', score: skillProfile.iff_discrimination, desc: 'Friend vs Foe corridor verification' },
+                { label: '3. SWARM RESOLUTION', score: skillProfile.swarm_resolution, desc: 'Merged contact signature breakdown', isWeak: skillProfile.swarm_resolution < 50 },
+                { label: '4. EW / COUNTERMEASURE', score: skillProfile.ew_countermeasures, desc: 'RF Jammer vs Kinetic decision' },
+                { label: '5. TACTICAL EVASION', score: skillProfile.tactical_evasion, desc: 'Bunker & sandbag cover under dive' },
+              ].map((sk, idx) => (
+                <div
+                  key={idx}
+                  className={`bg-slate-950 rounded-xl p-3 border space-y-1.5 ${
+                    sk.isWeak ? 'border-amber-500/80 bg-amber-950/20 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-slate-800'
+                  }`}
+                >
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-slate-400 font-bold truncate">{sk.label}</span>
+                    {sk.isWeak && <AlertTriangle className="w-3 h-3 text-amber-400 animate-pulse" />}
+                  </div>
+                  <div className="text-xl font-tactical font-black text-slate-100 flex items-baseline justify-between">
+                    <span>{sk.score}%</span>
+                    <span className={`text-[10px] font-bold ${sk.score >= 80 ? 'text-emerald-400' : sk.score >= 60 ? 'text-cyan-400' : 'text-amber-400'}`}>
+                      {sk.score >= 80 ? 'OPTIMAL' : sk.score >= 60 ? 'STEADY' : 'WEAK AREA'}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${sk.isWeak ? 'bg-amber-400' : 'bg-cyan-400'}`}
+                      style={{ width: `${sk.score}%` }}
+                    />
+                  </div>
+                  <p className="text-[9px] text-slate-500 leading-tight">{sk.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* AI Prescription Card */}
+            <div className="bg-slate-950 border border-emerald-500/40 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs uppercase">
+                  <Bot className="w-4 h-4" /> AI ADAPTIVE PRESCRIPTION: REMEDIATION NEEDED ON SWARM RESOLUTION (42%)
+                </div>
+                <p className="text-xs text-slate-300">
+                  Targeted Sortie Recommended: <strong className="text-white">Dense Swarm in Degraded Sensor Fog with 2 Merged Traps (Seed #888, Tier 3)</strong>.
+                </p>
+              </div>
+
+              <button
+                onClick={handleAutoPrescribeAdaptiveDrill}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs transition flex items-center gap-2 whitespace-nowrap shadow-lg shadow-emerald-500/20"
+              >
+                <Play className="w-4 h-4" /> AUTO-LOAD TARGETED ADAPTIVE SCENARIO
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5. LIVE 3-PILLAR SCORING DASHBOARD (Point 7) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         {/* Pillar 1: Detection Latency Score */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-lg space-y-1">
@@ -444,7 +815,7 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
         </div>
       </div>
 
-      {/* 5. TACTICAL DECISION-MAKING SYSTEM DECK (Point 6) */}
+      {/* 6. TACTICAL DECISION-MAKING SYSTEM DECK (Point 6) */}
       <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
           <div>
@@ -553,7 +924,7 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
         )}
       </div>
 
-      {/* 6. BOTTOM ACTION BAR: View AAR Debrief Button */}
+      {/* 7. BOTTOM ACTION BAR: View AAR Debrief Button */}
       <div className="flex items-center justify-between p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl">
         <div className="text-xs text-slate-400">
           Drill in progress. Evaluate threat and execute decisions. You can inspect the full After-Action Review (AAR) report at any time.
@@ -569,7 +940,7 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
         </button>
       </div>
 
-      {/* 7. FULL AFTER-ACTION REVIEW (AAR) MODAL (Point 8) */}
+      {/* 8. FULL AFTER-ACTION REVIEW (AAR) MODAL (Point 8) */}
       {showAARModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-slate-900 border-2 border-cyan-500/60 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl font-mono text-xs">

@@ -21,6 +21,9 @@ class ObservedTrack(BaseModel):
     visual_signature: str
     thermal_signature: str
     is_clutter: bool = False
+    is_merged_swarm: bool = False
+    merged_target_count: int = 1
+    swarm_trap_active: bool = False
     status: str = "tracking"  # tracking, degraded, masked
     underlying_target_id: Optional[str] = None
 
@@ -177,5 +180,62 @@ class SyntheticSensorModel:
                 status="degraded",
                 underlying_target_id=None
             ))
+
+        # SWARM RESOLUTION TRAP (Innovation Feature 2):
+        # When multiple drones fly within radar angular resolution (< 3.2°) and range cell (< 40m),
+        # sensor merges them into a single track with elevated composite RCS (+10log10(N)).
+        if len(observed_tracks) >= 2 and sensor_state in ["normal", "degraded"]:
+            merged_indices = set()
+            clusters = []
+            for i in range(len(observed_tracks)):
+                if i in merged_indices or observed_tracks[i].is_clutter:
+                    continue
+                cluster = [i]
+                for j in range(i + 1, len(observed_tracks)):
+                    if j in merged_indices or observed_tracks[j].is_clutter:
+                        continue
+                    t1 = observed_tracks[i]
+                    t2 = observed_tracks[j]
+                    range_diff = abs(t1.range_m - t2.range_m)
+                    bearing_diff = abs(t1.bearing_deg - t2.bearing_deg)
+                    if bearing_diff > 180:
+                        bearing_diff = 360 - bearing_diff
+                    if range_diff < 40.0 and bearing_diff < 3.2:
+                        cluster.append(j)
+                        merged_indices.add(j)
+                if len(cluster) > 1:
+                    merged_indices.add(i)
+                    clusters.append(cluster)
+
+            if clusters:
+                final_tracks = [t for idx, t in enumerate(observed_tracks) if idx not in merged_indices]
+                for cluster in clusters:
+                    primary = observed_tracks[cluster[0]]
+                    count = len(cluster)
+                    elevated_rcs = primary.rcs_estimate_dbsm + 10.0 * math.log10(count)
+                    merged_track = ObservedTrack(
+                        track_id=f"TRK-MERGED-{primary.track_id.replace('TRK-', '')}",
+                        timestamp=elapsed_seconds,
+                        x=primary.x,
+                        y=primary.y,
+                        range_m=primary.range_m,
+                        bearing_deg=primary.bearing_deg,
+                        altitude_m=primary.altitude_m,
+                        speed_mps=primary.speed_mps,
+                        heading_deg=primary.heading_deg,
+                        rcs_estimate_dbsm=round(elevated_rcs, 2),
+                        rf_detected_ghz=primary.rf_detected_ghz,
+                        sensor_confidence=0.88,
+                        visual_signature=f"Unresolved Swarm Cluster ({count} UAS in tight formation)",
+                        thermal_signature=f"FLIR: Multiple propulsion thermal nodes ~{count*2} rotors",
+                        is_clutter=False,
+                        is_merged_swarm=True,
+                        merged_target_count=count,
+                        swarm_trap_active=True,
+                        status="tracking",
+                        underlying_target_id=primary.underlying_target_id
+                    )
+                    final_tracks.append(merged_track)
+                observed_tracks = final_tracks
 
         return observed_tracks
