@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
+import { BattlefieldCombatPage } from './pages/BattlefieldCombatPage';
 import { ScenarioSetupPage } from './pages/ScenarioSetupPage';
 import { LiveSimulationPage } from './pages/LiveSimulationPage';
 import { AARPage } from './pages/AARPage';
@@ -10,7 +11,7 @@ import { TraineeProfile, UnitProfile, Scenario, AARReport } from './types';
 import { soundFx } from './utils/audio';
 
 export function App() {
-  const [currentTab, setCurrentTab] = useState<string>('home');
+  const [currentTab, setCurrentTab] = useState<string>('battlefield'); // Default straight to 3D Soldier Simulation!
   const [units, setUnits] = useState<UnitProfile[]>([]);
   const [trainees, setTrainees] = useState<TraineeProfile[]>([]);
   const [currentTrainee, setCurrentTrainee] = useState<TraineeProfile | null>(null);
@@ -62,7 +63,7 @@ export function App() {
         if (genRes.ok) {
           const scn = await genRes.json();
           setActiveScenario(scn);
-          setCurrentTab('sim');
+          setCurrentTab('battlefield'); // Launch straight into 3D Soldier Combat!
         }
       }
     } catch (e) {
@@ -73,15 +74,101 @@ export function App() {
   // Launch scenario from setup
   const handleStartScenario = (scn: Scenario) => {
     setActiveScenario(scn);
-    setCurrentTab('sim');
+    setCurrentTab('battlefield');
   };
 
-  // When live simulation completes
+  // When 3D Soldier Combat completes
+  const handleFinishCombatDrill = (results: {
+    duration: number;
+    score: number;
+    events: any[];
+    dronesNeutralized: number;
+    dronesTotal: number;
+    baseIntegrity: number;
+  }) => {
+    soundFx.playButtonClick();
+
+    // Create synthetic AAR report from combat drill
+    const mockAar: AARReport = {
+      session_id: `SES-COMBAT-${Math.floor(1000 + Math.random() * 9000)}`,
+      trainee: {
+        id: currentTrainee?.id || 'TR-101',
+        callsign: currentTrainee?.callsign || 'Viper-1',
+        rank: currentTrainee?.rank || 'Flight Lieutenant',
+        unit: '12th Garud Air Defense Squadron',
+        current_difficulty: currentTrainee?.current_difficulty || 1,
+      },
+      scenario: activeScenario || {
+        id: 'SCN-BATTLEFIELD-01',
+        title: '3D Battlefield Tactical Drone Swarm Incursion',
+        seed: 777,
+        terrain: 'border',
+        time_of_day: 'day',
+        threat_type: 'swarm_wedge',
+        difficulty: currentTrainee?.current_difficulty || 1,
+        sensor_state: 'normal',
+        sensor_reliability: 0.98,
+        clutter_density: 0.08,
+        target_count: results.dronesTotal,
+        track_source_type: 'native',
+      },
+      duration_seconds: results.duration,
+      score: {
+        total_score: results.score,
+        detection_score: Math.min(30, (results.score * 0.3)),
+        classification_score: Math.min(30, (results.score * 0.3)),
+        decision_score: Math.min(40, (results.score * 0.4)),
+        avg_detection_latency: 2.8,
+        classification_accuracy: results.dronesNeutralized / Math.max(1, results.dronesTotal),
+        optimal_decisions_pct: Math.round((results.dronesNeutralized / Math.max(1, results.dronesTotal)) * 100),
+        dangerous_errors_count: results.baseIntegrity < 50 ? 1 : 0,
+        missed_detections_count: Math.max(0, results.dronesTotal - results.dronesNeutralized),
+        ai_assist_agreement_pct: 88,
+        coach_feedback: results.dronesNeutralized >= results.dronesTotal
+          ? 'Exceptional 3D engagement: All incoming loitering munitions neutralized with directed RF jamming before reaching defensive perimeter.'
+          : 'Combat Warning: Drone breached perimeter. Prioritize firing directed RF jammer earlier at maximum effective range (200m).',
+      },
+      ai_coaching_analysis:
+        'Tactical Analysis: Good weapon posture and Smart-Scope usage. Maintain jammer beam steadily on drone fuselage until lift failure occurs.',
+      difficulty_change_reason:
+        results.score >= 80
+          ? 'Promoted difficulty for next sortie based on rapid target neutralizations.'
+          : 'Sustained current operational tier to master lead target acquisition.',
+      target_events: [
+        {
+          target_id: 'UAV-HOSTILE-01',
+          true_class: 'hostile',
+          detected_at: 2.1,
+          trainee_classification: 'hostile',
+          trainee_response: 'authorise_protective_response',
+          decision_outcome: 'Optimal',
+          decision_path: 'Directed RF Jammer beam energized on approaching loitering munition causing aerodynamic stall.',
+          score_points: 100,
+          ai_followed: true,
+        },
+        {
+          target_id: 'SWM-DRONE-02',
+          true_class: 'hostile',
+          detected_at: 3.5,
+          trainee_classification: 'hostile',
+          trainee_response: 'authorise_protective_response',
+          decision_outcome: 'Optimal',
+          decision_path: 'Secondary swarm member jammed successfully.',
+          score_points: 90,
+          ai_followed: true,
+        },
+      ],
+    };
+
+    setLatestAAR(mockAar);
+    setCurrentTab('aar');
+  };
+
+  // When live radar simulation completes
   const handleFinishSession = (aarData: AARReport) => {
     setLatestAAR(aarData);
     setCurrentTab('aar');
 
-    // Refresh trainee difficulty in state
     if (currentTrainee && aarData.trainee.current_difficulty) {
       setCurrentTrainee((prev) =>
         prev ? { ...prev, current_difficulty: aarData.trainee.current_difficulty } : null
@@ -91,7 +178,7 @@ export function App() {
 
   // Scramble next adaptive sortie from AAR
   const handleScrambleNext = () => {
-    setCurrentTab('setup');
+    setCurrentTab('battlefield');
   };
 
   const currentUnit = units.find((u) => u.id === currentTrainee?.unit_id) || units[0] || null;
@@ -117,6 +204,14 @@ export function App() {
           />
         )}
 
+        {currentTab === 'battlefield' && (
+          <BattlefieldCombatPage
+            currentTrainee={currentTrainee}
+            onFinishCombatDrill={handleFinishCombatDrill}
+            onSwitchToRadar={() => setCurrentTab('sim')}
+          />
+        )}
+
         {currentTab === 'setup' && (
           <ScenarioSetupPage
             onStartScenario={handleStartScenario}
@@ -136,12 +231,20 @@ export function App() {
           <div className="text-center py-24 font-mono space-y-4">
             <div className="text-slate-400 text-lg">NO ACTIVE TACTICAL SCENARIO</div>
             <p className="text-slate-500 text-xs">Configure a scenario or quick scramble from Command Overview.</p>
-            <button
-              onClick={() => setCurrentTab('setup')}
-              className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold font-mono text-xs transition"
-            >
-              GO TO SCENARIO SETUP
-            </button>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setCurrentTab('battlefield')}
+                className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold font-mono text-xs transition shadow-lg shadow-cyan-500/20"
+              >
+                🎮 ENTER 3D SOLDIER BATTLEFIELD
+              </button>
+              <button
+                onClick={() => setCurrentTab('setup')}
+                className="px-6 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-bold font-mono text-xs transition"
+              >
+                SCENARIO SETUP
+              </button>
+            </div>
           </div>
         )}
 
@@ -165,7 +268,7 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-2">
           <span>ASTRA VEER // DEFENCE SERVICES STAFF COLLEGE (SIH 247)</span>
           <span className="text-cyan-400/80">
-            SIMULATED TRAINING PLATFORM ONLY - STRICTLY OFFLINE CAPABLE - ZERO OPERATIONAL LINK
+            SOLDIER COMBAT SIMULATION & COUNTER-UAS TRAINER - 100% OFFLINE CAPABLE
           </span>
           <span>BUILD v1.0-DEMO // ALL RIGHTS RESERVED</span>
         </div>

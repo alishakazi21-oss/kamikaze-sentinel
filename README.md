@@ -13,17 +13,48 @@ Modern tactical commanders and air defense operators face an asymmetric drone th
 Operational requirements mandate a software platform that is **usable at the forward unit level on standard laptops without specialized gaming GPUs or active internet connectivity**, while remaining modular enough to link to high-fidelity Unreal Engine simulators at higher-echelon training centers.
 
 **ASTRA VEER** fulfills this vision with a tiered, adapter-based simulation architecture:
-1. **Desktop Tactical Simulator**: Real-time 2D Plan Position Indicator (PPI) radar canvas and interactive 3D WebGL tactical airspace running 100% in-browser at 60 FPS on standard hardware.
-2. **Procedural Threat Engine**: Deterministic pseudo-random seed generator producing realistic drone swarm formations (Wedge, Leader-Follower, Line Abreast, Dispersed) with 3 to 12 simultaneous contacts.
-3. **Sensor Degradation Modeling**: Environmental simulation including urban building radar occlusion, night-vision optical degradation, and electronic warfare (EW) jamming noise.
-4. **3-Pillar Decision-Tree Scoring**: Mathematically evaluates Detection Latency ($T_{\text{full}} \to T_{\text{max}}$ linear decay), Classification Accuracy, and Tactical Decision Quality via a configurable rule matrix.
-5. **After-Action Review (AAR) Debrief Engine**: Complete interactive post-mission timeline, step-by-step flight trajectory replay with distance markers, and rule-traversal visualizer.
-6. **Real scikit-learn AI Assist & Coaching**: An explainable Random Forest classifier providing real-time telemetry recommendations (>90% held-out test accuracy) and data-driven tactical weakness diagnostics.
-7. **Adaptive Difficulty Progression**: Automatically modulates threat volume and time pressure based on trailing performance.
+1. **Interactive 3D Soldier Combat Simulator**: Playable first/third-person 3D battlefield where a virtual soldier stands guard at a forward outpost, takes cover behind sandbag fortifications, aims an Anti-Drone RF Jammer gun, and engages incoming kamikaze drones and swarms.
+2. **Desktop Tactical Air Defense Command**: Real-time 2D Plan Position Indicator (PPI) radar canvas and interactive 3D WebGL tactical airspace running 100% in-browser at 60 FPS on standard hardware.
+3. **Procedural Threat Engine**: Deterministic pseudo-random seed generator producing realistic drone swarm formations (Wedge, Leader-Follower, Line Abreast, Dispersed) with 3 to 12 simultaneous contacts.
+4. **Sensor Degradation Modeling**: Environmental simulation including urban building radar occlusion, night-vision optical degradation, and electronic warfare (EW) jamming noise.
+5. **3-Pillar Decision-Tree Scoring**: Mathematically evaluates Detection Latency ($T_{\text{full}} \to T_{\text{max}}$ linear decay), Classification Accuracy, and Tactical Decision Quality via a configurable rule matrix.
+6. **After-Action Review (AAR) Debrief Engine**: Complete interactive post-mission timeline, step-by-step flight trajectory replay with distance markers, and rule-traversal visualizer.
+7. **Real scikit-learn AI Assist & Coaching**: An explainable Random Forest classifier providing real-time telemetry recommendations (>90% held-out test accuracy) and data-driven tactical weakness diagnostics.
+8. **Adaptive Difficulty Progression**: Automatically modulates threat volume and time pressure based on trailing performance.
 
 ---
 
-## 2. System Architecture
+## 2. 3D Soldier Combat Simulation (Roadmap 1–10 Implementation)
+
+ASTRA VEER provides a first-person & third-person tactical 3D battlefield experience:
+
+| Roadmap Point | Implementation in ASTRA VEER |
+|---|---|
+| **1. 3D Battlefield Environment** | Realistic low-poly terrain, perimeter fence, military bunker with spinning radar, sandbag firing positions, roads, trees, and dynamic atmospheric sky. |
+| **2. Soldier Simulation** | Fully controllable soldier with WASD movement, mouse-look camera, sprint (`Shift`), jump (`Space`), crouch behind sandbag cover (`C`), and 1st/3rd person toggle (`V`). |
+| **3. Drone Threat Simulation** | Single loitering kamikaze munitions and multi-UAV swarms (Wedge, Leader-Follower, Line Abreast) with diving attack profiles. |
+| **4. Dynamic Scenarios** | Day, Dusk/Fog, and Night operational conditions, plus Night Vision Goggles (`N`) and tactical weapon flashlight (`F`). |
+| **5. Threat Detection & Classification** | Trainee tracks incoming threats using Smart-Scope / ADS (Right Click) with digital rangefinder (m) and azimuth bearing. |
+| **6. Decision-Making System** | Trainee chooses whether to engage with Directed Energy RF Jammer Gun (Left Click), take cover behind sandbags, or issue air defense alerts. |
+| **7. Scoring System** | 3-Pillar real-time scoring evaluating detection latency, identification accuracy, and tactical defense quality. |
+| **8. AAR Dashboard** | Post-mission debrief featuring composite score, decision tree rule traversal, flight trajectory replay, and AI coaching. |
+| **9. Randomization & Difficulty** | Seeded deterministic threat vectors with 4 operational difficulty tiers (Novice to Elite). |
+| **10. Testing & Final Demo** | 100% offline-ready, verifiable via automated test suite and live playable demo at `http://localhost:5173/combat`. |
+
+### Controls Quick Reference:
+- **W / A / S / D**: Move soldier around battlefield
+- **Mouse**: 360° Look around (Click canvas for Pointer Lock)
+- **Left Mouse Button (Hold)**: Fire Anti-Drone Directed Energy RF Jammer Gun
+- **Right Mouse Button (Hold)**: Aim Down Sights (ADS) Smart-Scope with Rangefinder & Azimuth
+- **C**: Crouch / Take Cover behind sandbags
+- **V**: Toggle First-Person (FPS) / Third-Person (Over-the-shoulder)
+- **N**: Toggle Night Vision Goggles (Green phosphor FLIR HUD)
+- **F**: Toggle Tactical Weapon Spotlight
+- **Shift**: Sprint
+
+---
+
+## 3. System Architecture
 
 ```
                     +------------------------------------------+

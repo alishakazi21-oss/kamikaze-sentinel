@@ -45,11 +45,11 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button
               onClick={() => {
                 soundFx.playButtonClick();
-                onNavigate('setup');
+                onNavigate('battlefield');
               }}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold font-mono text-sm flex items-center gap-2 shadow-lg shadow-cyan-500/20 tactical-glow-cyan transition"
+              className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-black font-mono text-sm flex items-center gap-2.5 shadow-xl shadow-cyan-500/25 tactical-glow-cyan transition transform hover:scale-[1.02]"
             >
-              <Play className="w-4 h-4 fill-current" /> CONFIGURE CUSTOM SORTIE
+              <Play className="w-5 h-5 fill-current" /> 🎮 LAUNCH 3D SOLDIER SIMULATOR
             </button>
 
             <button
@@ -57,9 +57,19 @@ export const HomePage: React.FC<HomePageProps> = ({
                 soundFx.playButtonClick();
                 onStartPreset('PRESET-01');
               }}
-              className="px-6 py-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-mono text-sm flex items-center gap-2 transition"
+              className="px-6 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-mono text-sm flex items-center gap-2 transition"
             >
-              QUICK SCRAMBLE: OPERATION TRISHUL <ArrowRight className="w-4 h-4" />
+              RADAR C4I SCRAMBLE <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => {
+                soundFx.playButtonClick();
+                onNavigate('setup');
+              }}
+              className="px-5 py-3.5 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-700 text-slate-300 font-mono text-sm flex items-center gap-2 transition"
+            >
+              SCENARIO SETUP
             </button>
           </div>
         </div>

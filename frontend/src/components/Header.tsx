@@ -74,8 +74,9 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
           {[
             { id: 'home', label: 'COMMAND' },
-            { id: 'setup', label: 'SCENARIO SETUP' },
-            { id: 'sim', label: 'TACTICAL SIM' },
+            { id: 'battlefield', label: '🎮 3D SOLDIER SIM' },
+            { id: 'sim', label: 'RADAR CIC' },
+            { id: 'setup', label: 'SCENARIOS' },
             { id: 'aar', label: 'AAR DEBRIEF' },
             { id: 'analytics', label: 'ANALYTICS' },
             { id: 'diagnostics', label: 'SYSTEM' },
