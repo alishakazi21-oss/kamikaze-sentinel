@@ -27,6 +27,19 @@ interface Battlefield3DSimulatorProps {
   timeOfDay?: 'day' | 'dusk' | 'night';
   difficulty?: number;
   threatType?: string;
+  seed?: number;
+  activeResponseAction?: string | null;
+  onClearResponseAction?: () => void;
+  onLiveScoreUpdate?: (scoreData: {
+    detectionLatency: number;
+    detectionScore: number;
+    classificationScore: number;
+    decisionScore: number;
+    totalScore: number;
+    decisionOutcome: string;
+    dronesNeutralized: number;
+    dronesTotal: number;
+  }) => void;
   onFinishDrill: (results: {
     duration: number;
     score: number;
@@ -42,6 +55,10 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
   timeOfDay = 'day',
   difficulty = 1,
   threatType = 'single',
+  seed = 777,
+  activeResponseAction = null,
+  onClearResponseAction,
+  onLiveScoreUpdate,
   onFinishDrill,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -978,6 +995,26 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
         setAlertLevel('low');
       }
 
+      // Dispatch live 3-pillar scoring to parent
+      const elapsedSec = (Date.now() - startTimeRef.current) / 1000;
+      const dScore = Math.max(10, Math.round(30 - Math.min(20, elapsedSec * 1.5)));
+      const cScore = 30;
+      const decScore = neutralizedCountRef.current > 0 ? 40 : inCover ? 35 : 20;
+      const tScore = dScore + cScore + decScore;
+
+      if (Math.random() < 0.1) {
+        onLiveScoreUpdate?.({
+          detectionLatency: Math.round(elapsedSec * 10) / 10,
+          detectionScore: dScore,
+          classificationScore: cScore,
+          decisionScore: decScore,
+          totalScore: tScore,
+          decisionOutcome: neutralizedCountRef.current > 0 ? 'Optimal' : inCover ? 'Acceptable' : 'Under-reaction',
+          dronesNeutralized: neutralizedCountRef.current,
+          dronesTotal: totalDronesCountRef.current || 1,
+        });
+      }
+
       renderer.render(scene, camera);
     };
 
@@ -1030,6 +1067,86 @@ export const Battlefield3DSimulator: React.FC<Battlefield3DSimulatorProps> = ({
       time: (Date.now() - startTimeRef.current) / 1000,
     });
   };
+
+  // Handle Net Deployment
+  const handleDeployNet = () => {
+    soundFx.playTargetLock();
+    const locked = lockedDrone || dronesRef.current.find((d) => d.status === 'flying');
+    if (locked && locked.status === 'flying') {
+      locked.status = 'falling';
+      soundFx.playExplosion();
+      neutralizedCountRef.current += 1;
+      setOutcomeBanner({
+        title: '🕸️ NET CAPTURE SUCCESSFUL!',
+        subtitle: `${locked.modelName} captured intact via counter-drone net canopy! (+100 PTS)`,
+        type: 'success',
+      });
+      eventsLogRef.current.push({
+        target_id: locked.id,
+        action: 'net_capture',
+        time: (Date.now() - startTimeRef.current) / 1000,
+        type: locked.type,
+      });
+    }
+  };
+
+  // Watch for external tactical response selections from parent Decision Deck
+  useEffect(() => {
+    if (!activeResponseAction) return;
+    if (activeResponseAction === 'authorise_protective_response' || activeResponseAction === 'rf_jammer') {
+      setIsFiringJammer(true);
+      soundFx.setJammerBeam(true);
+      const target = lockedDrone || dronesRef.current.find((d) => d.status === 'flying');
+      if (target) {
+        target.health = 0;
+        target.status = 'falling';
+        soundFx.playExplosion();
+        neutralizedCountRef.current += 1;
+        setOutcomeBanner({
+          title: '🎯 OPTIMAL DECISION: RF JAMMER ENGAGED!',
+          subtitle: `${target.modelName} neutralized via Directed Energy EW! (+40 PTS DECISION QUALITY)`,
+          type: 'success',
+        });
+        eventsLogRef.current.push({
+          target_id: target.id,
+          action: 'authorise_protective_response',
+          time: (Date.now() - startTimeRef.current) / 1000,
+          type: target.type,
+        });
+      }
+    } else if (activeResponseAction === 'kinetic_intercept') {
+      handleFireKinetic();
+    } else if (activeResponseAction === 'deploy_net') {
+      handleDeployNet();
+    } else if (activeResponseAction === 'take_cover') {
+      setInCover(true);
+      soundFx.playButtonClick();
+    } else if (activeResponseAction === 'run_bunker') {
+      if (soldierRef.current) {
+        soldierRef.current.position.z = 8.0;
+        soundFx.playFootstep();
+      }
+    } else if (activeResponseAction === 'raise_alert') {
+      handleRadioHQ();
+    } else if (activeResponseAction === 'continue_monitoring') {
+      soundFx.playRadioSquelch();
+      const target = lockedDrone || dronesRef.current.find((d) => d.status === 'flying');
+      if (target?.type === 'friendly') {
+        setOutcomeBanner({
+          title: '✅ OPTIMAL: ROE DISCIPLINE VERIFIED!',
+          subtitle: 'Friendly Patrol UAS cleared to transit without hostile engagement! (+40 PTS)',
+          type: 'success',
+        });
+      } else {
+        setOutcomeBanner({
+          title: '⚠️ UNDER-REACTION DETECTED!',
+          subtitle: 'Hostile threat allowed to advance toward outpost without engagement! (10 PTS)',
+          type: 'failure',
+        });
+      }
+    }
+    onClearResponseAction?.();
+  }, [activeResponseAction]);
 
   // Trigger Next Threat Wave
   const handleNextWave = () => {
