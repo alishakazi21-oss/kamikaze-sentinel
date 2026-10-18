@@ -1,0 +1,73 @@
+{
+  "_comment": "VYOM-RAKSHAK Unclassified Published Textbook Sensor Parameters (Besada et al. 2022; Richards 2014; Skolnik 2008)",
+  "radar": {
+    "sensor_id": "RADAR-01",
+    "sensor_type": "radar",
+    "name": "Ku-Band Tactical 3D Air Surveillance Radar",
+    "reference": "Richards, Fundamentals of Radar Signal Processing (CA-CFAR, Swerling I)",
+    "max_range_m": 4000.0,
+    "reference_range_m": 3500.0,
+    "range_cells": 400,
+    "beams": 36,
+    "pfa": 0.0001,
+    "cfar_n_cells": 16,
+    "range_resolution_m": 35.0,
+    "angular_resolution_deg": 3.0,
+    "min_range_sigma_m": 2.0,
+    "base_range_sigma_m": 16.0,
+    "min_bearing_sigma_deg": 0.25,
+    "base_bearing_sigma_deg": 1.8
+  },
+  "acoustic": {
+    "sensor_id": "ACOUSTIC-01",
+    "sensor_type": "acoustic",
+    "name": "Octahedral Acoustic Array (Bearing Only)",
+    "reference": "Besada et al., 2022, Sensors 22(1), 189",
+    "max_range_m": 1200.0,
+    "source_spl_ref_dB": 75.0,
+    "base_ambient_noise_dB": 45.0,
+    "sensitivity_dB": 6.0,
+    "atmospheric_absorption_dB_per_m": 0.005,
+    "angular_resolution_deg": 8.0,
+    "min_bearing_sigma_deg": 1.2,
+    "base_bearing_sigma_deg": 7.5,
+    "false_alarm_rate_per_scan": 0.30
+  },
+  "camera_eo": {
+    "sensor_id": "CAM-EO-01",
+    "sensor_type": "camera_eo",
+    "name": "Daylight Electro-Optical (EO) Tracking Camera",
+    "reference": "Johnson's Criteria / NATO STANAG 4347",
+    "max_range_day_m": 2500.0,
+    "max_range_dusk_m": 1200.0,
+    "max_range_night_m": 300.0,
+    "angular_resolution_deg": 0.5,
+    "min_bearing_sigma_deg": 0.1,
+    "base_bearing_sigma_deg": 0.5,
+    "false_alarm_rate_per_scan": 0.10
+  },
+  "camera_thermal": {
+    "sensor_id": "CAM-IR-01",
+    "sensor_type": "camera_thermal",
+    "name": "Cooled Long-Wave Infrared (FLIR) Imager",
+    "reference": "Holst, Testing and Evaluation of Infrared Imaging Systems",
+    "max_range_day_m": 2000.0,
+    "max_range_night_m": 1800.0,
+    "angular_resolution_deg": 0.6,
+    "min_bearing_sigma_deg": 0.12,
+    "base_bearing_sigma_deg": 0.6,
+    "false_alarm_rate_per_scan": 0.08
+  },
+  "rf_df": {
+    "sensor_id": "RF-DF-01",
+    "sensor_type": "rf",
+    "name": "Passive Tactical RF Direction Finder (0.4 - 6.0 GHz)",
+    "reference": "Poisel, Introduction to Communication Electronic Warfare Systems",
+    "max_range_m": 4500.0,
+    "sensitivity_dbm": -95.0,
+    "angular_resolution_deg": 5.0,
+    "min_bearing_sigma_deg": 0.8,
+    "base_bearing_sigma_deg": 3.5,
+    "false_alarm_rate_per_scan": 0.15
+  }
+}

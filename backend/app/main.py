@@ -2,15 +2,20 @@ import os
 import uuid
 import json
 import asyncio
-from datetime import datetime
-from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional, Tuple
 
 from fastapi import FastAPI, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .database import engine, Base, get_db
-from .models import Unit, Trainee, Scenario, Session as DbSession, TargetEvent, Score, DifficultyHistory
+from .models import (
+    Unit, Trainee, Scenario, Session as DbSession, TargetEvent,
+    Score, DifficultyHistory, SkillProfile, ScheduledRetest
+)
 from .schemas import (
     ScenarioCreateRequest, ScenarioResponse, SessionStartRequest,
     SessionEventRequest, SessionCompleteRequest, AIAssistRequest, AIAssistResponse
@@ -23,7 +28,7 @@ from .sources.sensor_model import SyntheticSensorModel
 from .scenario_engine import ScenarioEngine
 from .scoring import ScoringEngine
 from .ai_assistant import ai_assist_instance, generate_data_driven_coaching
-from .adaptive import adaptive_engine
+from .adaptive import adaptive_engine, CORE_SKILLS, SKILL_DISPLAY_NAMES
 
 # Initialize database schema
 Base.metadata.create_all(bind=engine)
@@ -149,6 +154,9 @@ def generate_scenario_endpoint(payload: ScenarioCreateRequest, db: Session = Dep
         seed=payload.seed,
         terrain=payload.terrain,
         time_of_day=payload.time_of_day,
+        weather=payload.weather,
+        jamming_level=payload.jamming_level,
+        sensor_bias_enabled=payload.sensor_bias_enabled,
         threat_type=payload.threat_type,
         difficulty=payload.difficulty,
         sensor_state=payload.sensor_state,
@@ -163,6 +171,9 @@ def generate_scenario_endpoint(payload: ScenarioCreateRequest, db: Session = Dep
         seed=data["seed"],
         terrain=data["terrain"],
         time_of_day=data["time_of_day"],
+        weather=data.get("weather", "clear"),
+        jamming_level=data.get("jamming_level", 0.0),
+        sensor_bias_enabled=data.get("sensor_bias_enabled", False),
         threat_type=data["threat_type"],
         difficulty=data["difficulty"],
         sensor_state=data["sensor_state"],
@@ -266,6 +277,10 @@ def get_session_tracks(
     source, sensor_model = get_or_create_sim_source(session_id, scenario_dict)
 
     ground_truth = source.get_ground_truth(t)
+    scn_weather = getattr(scn, "weather", "clear") or "clear"
+    scn_jamming = getattr(scn, "jamming_level", 0.0) or 0.0
+    scn_bias = bool(getattr(scn, "sensor_bias_enabled", False))
+
     observed_tracks = sensor_model.process(
         ground_truth=ground_truth,
         elapsed_seconds=t,
@@ -273,15 +288,75 @@ def get_session_tracks(
         sensor_reliability=scn.sensor_reliability,
         terrain=scn.terrain,
         time_of_day=scn.time_of_day,
-        clutter_density=scn.clutter_density
+        clutter_density=scn.clutter_density,
+        weather=scn_weather,
+        jamming_level=scn_jamming,
+        sensor_bias_enabled=scn_bias
     )
 
     return {
         "session_id": session_id,
         "elapsed_seconds": round(t, 2),
         "tracks": [trk.model_dump() for trk in observed_tracks],
+        "sensor_plots": [plt.model_dump() for plt in getattr(sensor_model, "last_sensor_plots", [])],
         "active_target_count": len([gt for gt in ground_truth if gt.is_active]),
         "total_targets": len(scn.target_definitions)
+    }
+
+
+@app.get("/api/sessions/{session_id}/sensor-plots")
+def get_session_sensor_plots(
+    session_id: str,
+    t: float = Query(0.0, description="Elapsed simulation time in seconds"),
+    db: Session = Depends(get_db)
+):
+    ses = db.query(DbSession).filter(DbSession.id == session_id).first()
+    if not ses:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    scn = ses.scenario
+    scenario_dict = {
+        "seed": scn.seed,
+        "threat_type": scn.threat_type,
+        "difficulty": scn.difficulty,
+        "sensor_state": scn.sensor_state,
+        "sensor_reliability": scn.sensor_reliability,
+        "terrain": scn.terrain,
+        "time_of_day": scn.time_of_day,
+        "clutter_density": scn.clutter_density,
+        "track_source_type": scn.track_source_type,
+        "definitions": scn.target_definitions
+    }
+    source, sensor_model = get_or_create_sim_source(session_id, scenario_dict)
+    ground_truth = source.get_ground_truth(t)
+
+    scn_weather = getattr(scn, "weather", "clear") or "clear"
+    scn_jamming = getattr(scn, "jamming_level", 0.0) or 0.0
+    scn_bias = bool(getattr(scn, "sensor_bias_enabled", False))
+
+    plots = sensor_model.process_sensor_plots(
+        ground_truth=ground_truth,
+        elapsed_seconds=t,
+        sensor_state=scn.sensor_state,
+        sensor_reliability=scn.sensor_reliability,
+        terrain=scn.terrain,
+        time_of_day=scn.time_of_day,
+        weather=scn_weather,
+        jamming_level=scn_jamming,
+        sensor_bias_enabled=scn_bias
+    )
+
+    return {
+        "session_id": session_id,
+        "elapsed_seconds": round(t, 2),
+        "sensor_plots": [p.model_dump() for p in plots],
+        "sensor_summary": {
+            "radar_count": len([p for p in plots if p.sensor_type == "radar"]),
+            "acoustic_count": len([p for p in plots if p.sensor_type == "acoustic"]),
+            "camera_eo_count": len([p for p in plots if p.sensor_type == "camera_eo"]),
+            "camera_thermal_count": len([p for p in plots if p.sensor_type == "camera_thermal"]),
+            "rf_count": len([p for p in plots if p.sensor_type == "rf"])
+        }
     }
 
 
@@ -354,6 +429,8 @@ def complete_session(session_id: str, payload: SessionCompleteRequest, db: Sessi
         detection_score=score_result.detection_score,
         classification_score=score_result.classification_score,
         decision_score=score_result.decision_score,
+        calibration_score=score_result.calibration_score,
+        overconfidence_index=score_result.overconfidence_index,
         avg_detection_latency=score_result.avg_detection_latency,
         classification_accuracy=score_result.classification_accuracy,
         optimal_decisions_pct=score_result.optimal_decisions_pct,
@@ -383,6 +460,9 @@ def complete_session(session_id: str, payload: SessionCompleteRequest, db: Sessi
         ev.trainee_response = td.trainee_response
         ev.decision_outcome = td.decision_outcome
         ev.decision_path = td.decision_path
+        ev.reason_code = td.reason_code
+        ev.confidence_rating = td.confidence_rating
+        ev.cross_checked = td.cross_checked
         ev.score_points = td.decision_score_pts
 
     # Evaluate Adaptive Difficulty progression
@@ -409,6 +489,59 @@ def complete_session(session_id: str, payload: SessionCompleteRequest, db: Sessi
             )
             db.add(dh)
             trainee.current_difficulty = new_diff
+
+    # Update Bayesian Knowledge Tracing (BKT) 6-Skill Profiles
+    existing_skills = db.query(SkillProfile).filter(SkillProfile.trainee_id == ses.trainee_id).all()
+    current_map = {sp.skill_key: sp.mastery_prob for sp in existing_skills}
+
+    scenario_meta = {
+        "threat_type": ses.scenario.threat_type,
+        "difficulty": ses.scenario.difficulty,
+        "weather": getattr(ses.scenario, "weather", "clear"),
+        "clutter_density": getattr(ses.scenario, "clutter_density", 0.05)
+    }
+    updated_bkt = adaptive_engine.update_bkt_skill_profiles(
+        current_mastery_map=current_map,
+        target_details=score_result.target_details,
+        scenario_meta=scenario_meta
+    )
+    for skill_key, pdata in updated_bkt.items():
+        sp = next((s for s in existing_skills if s.skill_key == skill_key), None)
+        if not sp:
+            sp = SkillProfile(
+                trainee_id=ses.trainee_id,
+                skill_key=skill_key,
+                mastery_prob=pdata["current_mastery"],
+                trials_count=pdata["trials_evaluated"],
+                last_updated=datetime.utcnow()
+            )
+            db.add(sp)
+        else:
+            sp.mastery_prob = pdata["current_mastery"]
+            sp.trials_count += pdata["trials_evaluated"]
+            sp.last_updated = datetime.utcnow()
+
+    # Schedule Retention Retests (+3 days and +7 days)
+    weakest_skill = min(updated_bkt.keys(), key=lambda k: updated_bkt[k]["current_mastery"])
+    now = datetime.utcnow()
+    retest_3d = ScheduledRetest(
+        trainee_id=ses.trainee_id,
+        skill_key=weakest_skill,
+        scenario_id=ses.scenario_id,
+        interval_days=3,
+        due_date=now + timedelta(days=3),
+        completed=False
+    )
+    retest_7d = ScheduledRetest(
+        trainee_id=ses.trainee_id,
+        skill_key=weakest_skill,
+        scenario_id=ses.scenario_id,
+        interval_days=7,
+        due_date=now + timedelta(days=7),
+        completed=False
+    )
+    db.add(retest_3d)
+    db.add(retest_7d)
 
     db.commit()
 
@@ -464,6 +597,9 @@ def get_session_aar(session_id: str, db: Session = Depends(get_db)):
             "trainee_response": e.trainee_response,
             "decision_outcome": e.decision_outcome,
             "decision_path": e.decision_path,
+            "reason_code": getattr(e, "reason_code", "OPTIMAL_ENGAGEMENT"),
+            "confidence_rating": getattr(e, "confidence_rating", 4),
+            "cross_checked": getattr(e, "cross_checked", False),
             "score_points": e.score_points,
             "ai_followed": e.ai_followed
         } for e in events
@@ -500,6 +636,8 @@ def get_session_aar(session_id: str, db: Session = Depends(get_db)):
             "detection_score": ses.score.detection_score,
             "classification_score": ses.score.classification_score,
             "decision_score": ses.score.decision_score,
+            "calibration_score": getattr(ses.score, "calibration_score", 100.0),
+            "overconfidence_index": getattr(ses.score, "overconfidence_index", 0.0),
             "avg_detection_latency": ses.score.avg_detection_latency,
             "classification_accuracy": ses.score.classification_accuracy,
             "optimal_decisions_pct": ses.score.optimal_decisions_pct,
@@ -628,8 +766,13 @@ def get_ai_prediction(payload: AIAssistRequest):
     return AIAssistResponse(
         suggested_class=result["suggested_class"],
         confidence=result["confidence"],
+        entropy=result.get("entropy", 0.0),
+        uncertainty_score=result.get("uncertainty_score", 0.0),
+        is_uncertain=result.get("is_uncertain", False),
+        class_probabilities=result.get("class_probabilities", {}),
         explanation=result["explanation"],
-        feature_importance=result["feature_importance"]
+        feature_importance=result["feature_importance"],
+        held_out_model_accuracy=result.get("held_out_model_accuracy", 88.0)
     )
 
 
@@ -670,4 +813,202 @@ def get_per_skill_adaptive_profile(trainee_id: str, db: Session = Depends(get_db
         },
         "per_skill_analysis": profile
     }
+
+
+@app.get("/api/trainees/{trainee_id}/skills")
+def get_trainee_skills(trainee_id: str, db: Session = Depends(get_db)):
+    trainee = db.query(Trainee).filter(Trainee.id == trainee_id).first()
+    if not trainee:
+        raise HTTPException(status_code=404, detail="Trainee not found")
+
+    skills = db.query(SkillProfile).filter(SkillProfile.trainee_id == trainee_id).all()
+    skill_map = {s.skill_key: s for s in skills}
+
+    results = []
+    for k in CORE_SKILLS:
+        sp = skill_map.get(k)
+        prob = sp.mastery_prob if sp else adaptive_engine.bkt.p_l0
+        trials = sp.trials_count if sp else 0
+        exp_success = adaptive_engine.bkt.expected_success_rate(prob)
+        results.append({
+            "skill_key": k,
+            "display_name": SKILL_DISPLAY_NAMES[k],
+            "mastery_prob": prob,
+            "mastery_pct": round(prob * 100, 1),
+            "expected_success_rate": round(exp_success * 100, 1),
+            "trials_count": trials,
+            "is_mastered": prob >= 0.70
+        })
+
+    weakest = min(results, key=lambda s: s["mastery_prob"])
+    return {
+        "trainee_id": trainee_id,
+        "skills": results,
+        "weakest_skill": weakest["skill_key"],
+        "weakest_skill_name": weakest["display_name"]
+    }
+
+
+@app.get("/api/trainees/{trainee_id}/next-scenario")
+def get_next_recommended_scenario(
+    trainee_id: str,
+    mode: str = Query("ADAPTIVE", description="ADAPTIVE or FIXED_SEQUENCE"),
+    db: Session = Depends(get_db)
+):
+    trainee = db.query(Trainee).filter(Trainee.id == trainee_id).first()
+    if not trainee:
+        raise HTTPException(status_code=404, detail="Trainee not found")
+
+    completed_count = db.query(DbSession).filter(
+        DbSession.trainee_id == trainee_id,
+        DbSession.status == "completed"
+    ).count()
+
+    skills = db.query(SkillProfile).filter(SkillProfile.trainee_id == trainee_id).all()
+    skill_map = {s.skill_key: s.mastery_prob for s in skills}
+
+    recommendation = adaptive_engine.select_next_scenario(
+        skill_mastery_map=skill_map,
+        completed_sessions_count=completed_count,
+        mode=mode
+    )
+
+    return recommendation
+
+
+@app.get("/api/trainees/{trainee_id}/retests")
+def get_trainee_retests(trainee_id: str, db: Session = Depends(get_db)):
+    retests = db.query(ScheduledRetest).filter(
+        ScheduledRetest.trainee_id == trainee_id
+    ).order_by(ScheduledRetest.due_date.asc()).all()
+
+    now = datetime.utcnow()
+    return [
+        {
+            "id": r.id,
+            "skill_key": r.skill_key,
+            "skill_name": SKILL_DISPLAY_NAMES.get(r.skill_key, r.skill_key),
+            "scenario_id": r.scenario_id,
+            "interval_days": r.interval_days,
+            "due_date": r.due_date.isoformat(),
+            "completed": r.completed,
+            "is_due_now": r.due_date <= now
+        } for r in retests
+    ]
+
+
+@app.post("/api/retests/simulate-time")
+def simulate_time_advance(days: int = Query(3, description="Number of days to advance retention clock"), db: Session = Depends(get_db)):
+    """Simulates moving the clock forward to test 3-day and 7-day retention retests."""
+    retests = db.query(ScheduledRetest).all()
+    for r in retests:
+        r.due_date = r.due_date - timedelta(days=days)
+    db.commit()
+    now = datetime.utcnow()
+    due_now_count = len([r for r in retests if r.due_date <= now and not r.completed])
+    return {
+        "status": "time_advanced",
+        "days_advanced": days,
+        "due_retests_count": due_now_count
+    }
+
+
+# -------------------------------------------------------------
+# 9. Instructor Console: ROE & Scoring Configuration Editor
+# -------------------------------------------------------------
+@app.get("/api/instructor/roe")
+def get_instructor_roe():
+    """Returns current ROE decision rules and scoring weights configuration."""
+    rules_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "decision_rules.json")
+    if os.path.exists(rules_path):
+        with open(rules_path, "r") as f:
+            data = json.load(f)
+        return data
+    return scoring_engine.config
+
+
+@app.post("/api/instructor/roe")
+def update_instructor_roe(payload: Dict[str, Any]):
+    """Validates and saves updated ROE decision rules and scoring weights, reloading the scoring engine."""
+    rules_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "decision_rules.json")
+
+    # Validation
+    if "weights" not in payload:
+        raise HTTPException(status_code=400, detail="Missing 'weights' in ROE payload")
+    if "rules" not in payload:
+        raise HTTPException(status_code=400, detail="Missing 'rules' in ROE payload")
+
+    with open(rules_path, "w") as f:
+        json.dump(payload, f, indent=2)
+
+    # Hot reload scoring engine
+    global scoring_engine
+    scoring_engine = ScoringEngine(rules_path)
+
+    return {
+        "status": "updated",
+        "rules_count": len(payload.get("rules", [])),
+        "weights": payload.get("weights"),
+        "critical_range_m": payload.get("critical_range_m")
+    }
+
+
+@app.get("/api/instructor/overview")
+def get_instructor_overview(db: Session = Depends(get_db)):
+    """Provides instructor-level oversight across all units, trainees, and retention retests."""
+    trainees = db.query(Trainee).all()
+    trainee_overviews = []
+    for tr in trainees:
+        skills = db.query(SkillProfile).filter(SkillProfile.trainee_id == tr.id).all()
+        skill_map = {s.skill_key: round(s.mastery_prob * 100, 1) for s in skills}
+        completed_sessions = db.query(DbSession).filter(DbSession.trainee_id == tr.id, DbSession.status == "completed").count()
+        avg_score = db.query(Score).join(DbSession).filter(DbSession.trainee_id == tr.id).all()
+        mean_score = round(sum(s.total_score for s in avg_score) / len(avg_score), 1) if avg_score else 0.0
+
+        due_retests = db.query(ScheduledRetest).filter(
+            ScheduledRetest.trainee_id == tr.id,
+            ScheduledRetest.due_date <= datetime.utcnow(),
+            ScheduledRetest.completed == False
+        ).count()
+
+        trainee_overviews.append({
+            "id": tr.id,
+            "callsign": tr.callsign,
+            "rank": tr.rank,
+            "unit": tr.unit.name if tr.unit else "Unknown",
+            "current_difficulty": tr.current_difficulty,
+            "completed_sessions": completed_sessions,
+            "mean_score": mean_score,
+            "skills": skill_map,
+            "due_retests_count": due_retests
+        })
+
+    return {
+        "total_trainees": len(trainees),
+        "active_units": db.query(Unit).count(),
+        "trainees": trainee_overviews
+    }
+
+
+# Static build mounting for production/Render deployment
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+if os.path.exists(frontend_dist):
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api") or full_path.startswith("ws") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        target_file = os.path.join(frontend_dist, full_path)
+        if full_path and os.path.isfile(target_file):
+            return FileResponse(target_file)
+        index_file = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="Frontend build index.html not found")
+
+
+
 

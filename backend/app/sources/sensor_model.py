@@ -3,6 +3,7 @@ import random
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from .base import TargetTelemetry
+from .sensor_reality import SensorRealityEngine, SensorPlot
 
 
 class ObservedTrack(BaseModel):
@@ -33,10 +34,40 @@ class SyntheticSensorModel:
     Transforms clean ground-truth targets into realistic synthetic radar and EO tracks.
     Introduces Gaussian sensor noise, radar horizon masking, urban building occlusion,
     environmental attenuation (night/fog), dropout, and false clutter blips.
+    Powered by the underlying deterministic SensorRealityEngine.
     """
 
     def __init__(self, seed: Optional[int] = None):
-        self.rng = random.Random(seed if seed is not None else 42)
+        self.seed = seed if seed is not None else 42
+        self.rng = random.Random(self.seed)
+        self.reality_engine = SensorRealityEngine(seed=self.seed)
+        self.last_sensor_plots: List[SensorPlot] = []
+
+    def process_sensor_plots(
+        self,
+        ground_truth: List[TargetTelemetry],
+        elapsed_seconds: float,
+        sensor_state: str = "normal",
+        sensor_reliability: float = 1.0,
+        terrain: str = "urban",
+        time_of_day: str = "day",
+        weather: str = "clear",
+        jamming_level: float = 0.0,
+        sensor_bias_enabled: bool = False
+    ) -> List[SensorPlot]:
+        plots = self.reality_engine.generate_all_plots(
+            ground_truth=ground_truth,
+            timestamp=elapsed_seconds,
+            sensor_state=sensor_state,
+            sensor_reliability=sensor_reliability,
+            terrain=terrain,
+            time_of_day=time_of_day,
+            weather=weather,
+            jamming_level=jamming_level,
+            sensor_bias_enabled=sensor_bias_enabled
+        )
+        self.last_sensor_plots = plots
+        return plots
 
     def process(
         self,
@@ -46,8 +77,24 @@ class SyntheticSensorModel:
         sensor_reliability: float = 1.0,
         terrain: str = "urban",
         time_of_day: str = "day",
-        clutter_density: float = 0.1
+        clutter_density: float = 0.1,
+        weather: str = "clear",
+        jamming_level: float = 0.0,
+        sensor_bias_enabled: bool = False
     ) -> List[ObservedTrack]:
+        # Generate underlying physical multi-sensor plots
+        self.process_sensor_plots(
+            ground_truth=ground_truth,
+            elapsed_seconds=elapsed_seconds,
+            sensor_state=sensor_state,
+            sensor_reliability=sensor_reliability,
+            terrain=terrain,
+            time_of_day=time_of_day,
+            weather=weather,
+            jamming_level=jamming_level,
+            sensor_bias_enabled=sensor_bias_enabled
+        )
+
         observed_tracks: List[ObservedTrack] = []
 
         # Determine noise multipliers based on sensor state

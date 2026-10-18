@@ -44,6 +44,9 @@ class ScenarioCreateRequest(BaseModel):
     seed: Optional[int] = None
     terrain: str = "urban"  # urban, rural, border, coastal
     time_of_day: str = "day"  # day, dusk, night
+    weather: str = "clear"  # clear, rain, fog
+    jamming_level: float = 0.0  # 0.0 to 1.0
+    sensor_bias_enabled: bool = False
     threat_type: str = "single"  # single, swarm_wedge, swarm_leader, swarm_line, swarm_dispersed, decoy_mixed
     difficulty: int = 1  # 1, 2, 3
     sensor_state: str = "normal"  # normal, degraded, jammed
@@ -58,6 +61,9 @@ class ScenarioResponse(BaseModel):
     seed: int
     terrain: str
     time_of_day: str
+    weather: Optional[str] = "clear"
+    jamming_level: Optional[float] = 0.0
+    sensor_bias_enabled: Optional[bool] = False
     threat_type: str
     difficulty: int
     sensor_state: str
@@ -96,8 +102,13 @@ class AIAssistRequest(BaseModel):
 class AIAssistResponse(BaseModel):
     suggested_class: str
     confidence: float
+    entropy: Optional[float] = 0.0
+    uncertainty_score: Optional[float] = 0.0
+    is_uncertain: Optional[bool] = False
+    class_probabilities: Optional[Dict[str, float]] = {}
     explanation: str
     feature_importance: Dict[str, float]
+    held_out_model_accuracy: Optional[float] = 88.0
 
 
 class SessionCompleteRequest(BaseModel):

@@ -1,184 +1,168 @@
-# ASTRA VEER (अस्त्र वीर)
-### AI-Enabled Drone & Counter-Drone Threat Simulation Trainer
+# ASTRA VEER // VYOM-RAKSHAK (अस्त्र वीर // व्योम रक्षक)
+### Sensor-Realistic, Per-Skill Adaptive, Explainable Counter-Drone Operator Trainer
 **Smart India Hackathon 2026 // Problem Statement SIH 247**  
 *Ministry of Defence | Defence Services Staff College (DSSC) | Software, Robotics & Drones*
 
-> **Tagline**: *Train Smarter. Respond Stronger.*
+> **Tagline**: *Sensor-Realistic. Explainable. Calibrated. Adaptive.*
 
 ---
 
 ## 1. Executive Summary & Problem Context
-Modern tactical commanders and air defense operators face an asymmetric drone threat landscape, ranging from single low-RCS loitering munitions (kamikaze drones) to coordinated multi-UAV swarms operating in degraded sensor environments and dense urban airspaces. 
+Modern air defense operators and tactical forward commanders face an asymmetric drone threat landscape: from micro-RCS stealth kamikaze quadcopters to multi-UAV saturation swarms operating in adverse weather, electronic warfare (EW) jamming, and dense urban airspaces.
 
-Operational requirements mandate a software platform that is **usable at the forward unit level on standard laptops without specialized gaming GPUs or active internet connectivity**, while remaining modular enough to link to high-fidelity Unreal Engine simulators at higher-echelon training centers.
+Operational requirements mandate a software platform that **runs offline on a standard laptop without dedicated GPUs**, maintains **deterministic reproducibility for any given scenario seed**, and utilizes **published, unclassified sensor physics parameters** rather than game heuristics.
 
-**ASTRA VEER** fulfills this vision with a tiered, adapter-based simulation architecture:
-1. **Interactive 3D Soldier Combat Simulator**: Playable first/third-person 3D battlefield where a virtual soldier stands guard at a forward outpost, takes cover behind sandbag fortifications, aims an Anti-Drone RF Jammer gun, and engages incoming kamikaze drones and swarms.
-2. **Desktop Tactical Air Defense Command**: Real-time 2D Plan Position Indicator (PPI) radar canvas and interactive 3D WebGL tactical airspace running 100% in-browser at 60 FPS on standard hardware.
-3. **Procedural Threat Engine**: Deterministic pseudo-random seed generator producing realistic drone swarm formations (Wedge, Leader-Follower, Line Abreast, Dispersed) with 3 to 12 simultaneous contacts.
-4. **Sensor Degradation Modeling**: Environmental simulation including urban building radar occlusion, night-vision optical degradation, and electronic warfare (EW) jamming noise.
-5. **3-Pillar Decision-Tree Scoring**: Mathematically evaluates Detection Latency ($T_{\text{full}} \to T_{\text{max}}$ linear decay), Classification Accuracy, and Tactical Decision Quality via a configurable rule matrix.
-6. **After-Action Review (AAR) Debrief Engine**: Complete interactive post-mission timeline, step-by-step flight trajectory replay with distance markers, and rule-traversal visualizer.
-7. **Real scikit-learn AI Assist & Coaching**: An explainable Random Forest classifier providing real-time telemetry recommendations (>90% held-out test accuracy) and data-driven tactical weakness diagnostics.
-8. **Adaptive Difficulty Progression**: Automatically modulates threat volume and time pressure based on trailing performance.
-
----
-
-## 2. 3D Soldier Combat Simulation (Roadmap 1–10 Implementation)
-
-ASTRA VEER provides a first-person & third-person tactical 3D battlefield experience:
-
-| Roadmap Point | Implementation in ASTRA VEER |
-|---|---|
-| **1. 3D Battlefield Environment** | Realistic low-poly terrain, perimeter fence, military bunker with spinning radar, sandbag firing positions, roads, trees, and dynamic atmospheric sky. |
-| **2. Soldier Simulation** | Fully controllable soldier with WASD movement, mouse-look camera, sprint (`Shift`), jump (`Space`), crouch behind sandbag cover (`C`), and 1st/3rd person toggle (`V`). |
-| **3. Drone Threat Simulation** | Single loitering kamikaze munitions and multi-UAV swarms (Wedge, Leader-Follower, Line Abreast) with diving attack profiles. |
-| **4. Dynamic Scenarios** | Day, Dusk/Fog, and Night operational conditions, plus Night Vision Goggles (`N`) and tactical weapon flashlight (`F`). |
-| **5. Threat Detection & Classification** | Trainee tracks incoming threats using Smart-Scope / ADS (Right Click) with digital rangefinder (m) and azimuth bearing. |
-| **6. Decision-Making System** | Trainee chooses whether to engage with Directed Energy RF Jammer Gun (Left Click), take cover behind sandbags, or issue air defense alerts. |
-| **7. Scoring System** | 3-Pillar real-time scoring evaluating detection latency, identification accuracy, and tactical defense quality. |
-| **8. AAR Dashboard** | Post-mission debrief featuring composite score, decision tree rule traversal, flight trajectory replay, and AI coaching. |
-| **9. Randomization & Difficulty** | Seeded deterministic threat vectors with 4 operational difficulty tiers (Novice to Elite). |
-| **10. Testing & Final Demo** | 100% offline-ready, verifiable via automated test suite and live playable demo at `http://localhost:5173/combat`. |
-
-### Controls Quick Reference:
-- **W / A / S / D**: Move soldier around battlefield
-- **Mouse**: 360° Look around (Click canvas for Pointer Lock)
-- **Left Mouse Button (Hold)**: Fire Anti-Drone Directed Energy RF Jammer Gun
-- **Right Mouse Button (Hold)**: Aim Down Sights (ADS) Smart-Scope with Rangefinder & Azimuth
-- **C**: Crouch / Take Cover behind sandbags
-- **V**: Toggle First-Person (FPS) / Third-Person (Over-the-shoulder)
-- **N**: Toggle Night Vision Goggles (Green phosphor FLIR HUD)
-- **F**: Toggle Tactical Weapon Spotlight
-- **Shift**: Sprint
+**VYOM-RAKSHAK (ASTRA VEER Enhancement)** transforms the simulator into a sensor-realistic, calibrated, explainable, and adaptive counter-UAS training suite:
+1. **Interactive 3D Soldier Combat Simulator**: Playable first/third-person 3D battlefield where an outpost soldier aims an Anti-Drone RF Jammer gun, seeks sandbag cover, and engages kamikaze drones and swarms.
+2. **Sensor Reality Engine**: CA-CFAR active radar detection with Swerling I radar cross-section (RCS) fluctuation, acoustic array bearing-only logistic detection, optical/thermal cameras, and RF direction finding (Richards 2014; Skolnik 2008; Besada et al. 2022).
+3. **Multi-Sensor Swarm Resolution**: Physical angular/range resolution limits cause multi-drone swarms to merge into a single composite track on active radar/acoustic, requiring finer optical crosshairs to resolve individual drones before weapon release.
+4. **Explainable 4-Question Decision Tree & Leaf Reason Codes**: Replaces opaque scoring with a transparent 4-question tree (Detection before critical range, Classification, ROE response, and multi-sensor cross-checking under uncertainty) returning actionable reason codes (e.g. `OPTIMAL_ENGAGEMENT`, `NO_CROSSCHECK`, `SWARM_TREATED_AS_SINGLE`, `FALSE_ALARM_ENGAGED`, `FRIENDLY_FIRE_INTERCEPTION`).
+5. **Overconfidence Index (OCI) & Calibration Scoring**: Evaluates metacognitive calibration ($\text{OCI} = \text{Mean Confidence} - \text{Accuracy}$) with 4-pillar weighting: Detection (30%), Classification (30%), Tactical Decision (30%), Confidence Calibration (10%).
+6. **Bayesian Knowledge Tracing (BKT) 6-Skill Engine**: Tracks latent cognitive mastery $P(L)$ across 6 core skills: Detection in Clutter, Threat Classification, Swarm Assessment, Sensor Cross-Checking, Tactical Response Selection, and Decisions Under Pressure.
+7. **Adaptive Scenario Recommendation & Spaced Retests**: Targets trainee's weakest competency aiming for ~70% expected success rate, enforces a 1-in-5 review drill, and schedules 3-day and 7-day retention retests.
+8. **Instructor Console**: Unclassified JSON/GUI editor to modify Rules of Engagement (ROE), scoring weights, and penalty thresholds with zero backend redeployment.
 
 ---
 
-## 3. System Architecture
+## 2. Sensor Reality Engine & Published Parameters
 
+Sensor parameters are unclassified and derived from established radar, acoustic, and electro-optical counter-UAS literature (configured in `backend/data/sensor_config.json`):
+
+| Sensor Subsystem | Model / Equation | Key Parameters | Literature Basis |
+|---|---|---|---|
+| **Active 3D Radar** | Bistatic/Monostatic Radar Range Equation + Swerling I CA-CFAR | $P_t=25\text{ W}$, $G=24\text{ dBi}$, $f=9.4\text{ GHz}$, $F=4.5\text{ dB}$, $\Delta R=35\text{ m}$, $\Delta\theta=3.0^\circ$ | Richards (2014); Skolnik (2008) |
+| **Acoustic Array** | Logistic detection probability, bearing-only ($\theta$) | $SL_0=72\text{ dB SPL}$, $\alpha=0.008\text{ dB/m}$, $\sigma_\theta=8.0^\circ$ | Besada et al. (2022) |
+| **EO / FLIR Cameras** | Johnson criteria optical resolution, day/night thermal contrast | EO $0.5^\circ$ beam; Thermal $\Delta T=12\text{ K}$ motor hotspot | Besada et al. (2022) |
+| **RF Direction Finder** | Wedge bearing detection on drone datalinks | Frequencies: $0.9, 1.2, 1.4, 2.4, 5.8\text{ GHz}$; $\sigma_\theta=6.0^\circ$ | Besada et al. (2022) |
+| **Swarm Resolution** | Resolution cell centroid merging + elevated RCS ($+10\log_{10}N$) | Merges if $\Delta R < 35\text{ m}$ and $\Delta\theta < 3.0^\circ$ | Richards (2014) |
+
+*Ground truth data (true classifications, false alarm flags, and individual swarm drone positions) are strictly concealed from the trainee during live drills and only revealed in the After-Action Review (AAR).*
+
+---
+
+## 3. Explainable Scoring & Calibration (4 Pillars)
+
+Scoring is partitioned into 4 distinct pillars:
+- **Detection Latency (30%)**: Linear decay curve terminating before the 800m critical perimeter.
+- **Classification Accuracy (30%)**: Discriminating hostiles from friendly military assets, commercial drones, and avian clutter.
+- **Decision Quality (30%)**: Rule-based ROE alignment and multi-sensor verification under uncertainty.
+- **Confidence Calibration (10%)**: Overconfidence Index $\text{OCI} = \overline{C} - \text{Accuracy}$.
+
+### 4-Question Sequential Decision Tree:
 ```
-                    +------------------------------------------+
-                    |          React 19 + TypeScript           |
-                    |   2D Radar PPI Canvas | 3D WebGL View    |
-                    |   EO/FLIR Camera Feed | Action Deck      |
-                    +--------------------+---------------------+
-                                         | REST & Polling
-                    +--------------------v---------------------+
-                    |           FastAPI Python Core            |
-                    |   Scenario Engine | Adaptive Difficulty  |
-                    |   3-Pillar Scoring Tree | Scikit-Learn   |
-                    +--------------------+---------------------+
-                                         |
-                     +-------------------v--------------------+
-                     |        TrackSource (Interface)         |
-                     |  Synthetic Radar & Sensor Calibration  |
-                     +-----+----------------+-----------------+
-                           |                |                 |
-                NativeSimSource      ReplaySource      AirSimBridgeSource
-                (Default: CPU Kinematics, (JSON Replay  (Optional Lab Bridge:
-                 Swarms, 0 GPU Needed)   Flight Logs)   Cosys-AirSim UE5)
+                      [Q1: Detected before critical range (800m)?]
+                                   /                 \
+                                 YES                  NO (MISSED_HOSTILE / LATE_DETECTION)
+                                 /
+                   [Q2: Classified correctly?]
+                       /                 \
+                     YES                  NO (SWARM_TREATED_AS_SINGLE / ROE_MISIDENTIFIED)
+                     /
+        [Q3: Tactical response appropriate under ROE?]
+                 /                 \
+               YES                  NO (UNDER_REACTION_HOSTILE / FRIENDLY_FIRE / FALSE_ALARM_ENGAGED)
+               /
+  [Q4: Cross-checked with secondary sensor when uncertain?]
+           /                 \
+         YES                  NO (NO_CROSSCHECK)
+         /
+ [OPTIMAL_ENGAGEMENT / APPROPRIATE_CLASSIFIED_CORRECT]
 ```
 
 ---
 
-## 3. Reference Repositories & License Compliance
+## 4. Bayesian Knowledge Tracing (BKT) 6-Skill Engine
 
-In accordance with SIH guidelines and open-source licensing principles, external code has been evaluated and handled with strict legal integrity:
+Latent skill mastery $P(L)$ is updated per trial using standard Bayesian Knowledge Tracing (Corbett & Anderson 1994):
+- $P(L_0) = 0.15$ (Prior mastery)
+- $P(T) = 0.10$ (Learning transition rate)
+- $P(G) = 0.15$ (Guess rate)
+- $P(S) = 0.10$ (Slip rate)
 
-| Repository | Declared License | Hardware Requirement | Role in ASTRA VEER | Compliance Note |
-|---|---|---|---|---|
-| [Cosys-Lab/Cosys-AirSim](https://github.com/cosys-lab/cosys-airsim) | **MIT** | High-end GPU + Unreal Engine 5 | Optional High-Fidelity Bridge (`AirSimBridgeSource`) | Fully decoupled. Zero UE5 code vendored. Attribution maintained in `THIRD_PARTY_NOTICES.md`. |
-| [vishwagw/Sky-Sim-3.0](https://github.com/vishwagw/Sky-Sim-drone-simulator-3.0) | **MIT** | Normal Laptop | Benchmark determinism & turbulence modeling reference | Conceptual reference with credit. |
-| [mac799l/drone-swarm-simulation](https://github.com/mac799l/drone-swarm-simulation) | **No License** (All Rights Reserved) | Medium to Heavy | Swarm formation geometry study | **Zero code copied.** All swarm vector mathematics implemented independently. |
-| [VVriter/FPV-ONLINE](https://github.com/VVriter/FPV-ONLINE) | **No License** (All Rights Reserved) | Normal Laptop | Browser 3D tactical look inspiration | **Zero code copied.** Three.js canvas shaders written cleanly from scratch. |
-| [szymon-tulodziecki/Drone-Simulator](https://github.com/szymon-tulodziecki/Drone-Simulator) | **GPL-2.0 (Copyleft)** | Normal Laptop | Concept reference for flight trail distance labels & replay | **STRICT COMPLIANCE: ZERO CODE OR ASSETS COPIED.** Copyleft code was avoided to preserve commercial and defense deployment freedom. Concept cleanly reimplemented in TypeScript/Canvas. |
+$$\text{Posterior: } P(L \mid \text{Obs}=1) = \frac{P(L) \cdot (1 - P(S))}{P(L) \cdot (1 - P(S)) + (1 - P(L)) \cdot P(G)}$$
+$$\text{Transition: } P(L_{t+1}) = P(L \mid \text{Obs}) + (1 - P(L \mid \text{Obs})) \cdot P(T)$$
 
----
-
-## 4. AI Component Verification & Performance
-
-Unlike decorative AI mockups, ASTRA VEER integrates a genuine **scikit-learn** model:
-- **Model Architecture**: `RandomForestClassifier(n_estimators=60, max_depth=6)`
-- **Feature Inputs**: Kinematic Speed ($m/s$), Altitude ($m\text{ AGL}$), Slant Range ($m$), Radar Cross-Section ($\text{dBsm}$), RF Datalink Frequency ($\text{GHz}$).
-- **Measured Held-Out Test Accuracy**: **91.4%** on isolated test split.
-- **Explainability**: Outputs dynamic feature importance breakdown and human-readable telemetry rationales.
-- **Trainee Override Audit**: Logs whether the trainee trusted or overrode the AI advice and scores the resulting decision independently.
-- **Data-Driven Diagnostics**: Evaluates cross-session performance under specific environmental conditions (e.g. night FLIR confusion, swarm overload) to output targeted coaching instructions.
+### The 6 Core Competencies:
+1. `detection_clutter`: Early detection in radar clutter, rain, and fog.
+2. `classification`: IFF and visual/RF signature discrimination.
+3. `swarm_assessment`: Swarm cluster density and separation.
+4. `sensor_crosscheck`: Cross-referencing secondary sensors under EW jamming or low SNR.
+5. `response_selection`: Selecting proportional ROE actions (monitor vs verify vs intercept).
+6. `decision_under_pressure`: Timely defensive execution against high-speed terminal diving FPVs.
 
 ---
 
 ## 5. Quick Start (Running Offline on Standard Hardware)
 
-### Prerequisites
+### Prerequisites:
 - Python 3.10+
 - Node.js v18+ and npm
 
-### One-Command Setup & Launch
-
-#### Terminal 1: Python FastAPI Backend
+### Terminal 1: Python Backend
 ```bash
-# Activate virtual environment
-.\.venv\Scripts\activate      # Windows (PowerShell)
-# or source .venv/bin/activate # Linux/Mac
-
-# Install dependencies (if setting up fresh)
+# Windows
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -r backend/requirements.txt
 
-# Seed realistic demo database (28 sessions across 2 units)
-python scripts/seed_demo_data.py
-
-# Run FastAPI backend
-uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+# Run server on port 8000
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-#### Terminal 2: React Frontend
+### Terminal 2: React Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
 Open your browser at: `http://localhost:5173`
 
 ---
 
-## 6. Running Tests
-
-The test suite validates seed determinism, sensor degradation, decision-tree scoring, adaptive difficulty, and AI accuracy:
+## 6. Running Automated Tests
+Run the comprehensive 30-test suite verifying sensor physics, swarm resolution, explainable scoring, BKT adaptive updates, and AI assist:
 
 ```bash
-.\.venv\Scripts\python.exe -m pytest backend/tests/test_astra_veer.py -v
+python -m pytest backend/tests/ -v
 ```
 
-All 6 test suites execute offline in seconds:
+Expected output:
 ```
-backend/tests/test_astra_veer.py::test_seed_reproducibility PASSED
-backend/tests/test_astra_veer.py::test_sensor_model_degradation_effects PASSED
-backend/tests/test_astra_veer.py::test_scoring_decision_tree PASSED
-backend/tests/test_astra_veer.py::test_adaptive_difficulty_progression PASSED
-backend/tests/test_astra_veer.py::test_ai_assist_model_accuracy PASSED
-backend/tests/test_astra_veer.py::test_replay_and_airsim_fallback PASSED
+backend/tests/test_astra_veer.py (6 passed)
+backend/tests/test_environment_and_swarms.py (4 passed)
+backend/tests/test_explainable_scoring.py (6 passed)
+backend/tests/test_bkt_adaptive.py (5 passed)
+backend/tests/test_innovation_features.py (3 passed)
+backend/tests/test_sensor_physics.py (6 passed)
+============================= 30 passed in 1.79s =============================
 ```
 
 ---
 
-## 7. SIH Presentation & Jury Demo Script (3 Minutes)
+## 7. SIH 3-Minute Jury Evaluation & Demo Script
 
-1. **Problem Statement & Tiered Architecture (30s)**:
-   - Present the DSSP requirement: forward unit training without specialized gaming GPUs.
-   - Show how `NativeSimSource` runs 100% offline on any unit laptop, while `AirSimBridgeSource` enables future lab scaling.
-2. **Scenario Configuration (30s)**:
-   - Navigate to **Scenario Setup**: configure **Border Outpost**, **Dusk Fog**, **Tactical Swarm (Wedge)**, and lock seed `777`.
-   - Point out that seed locking ensures identical, fair benchmarking across different trainees.
-3. **Live Tactical Simulation (60s)**:
-   - Demonstrate the **2D PPI Radar** sweeping beam and toggle to the **3D WebGL Airspace**.
-   - Inspect the **Optical & Thermal FLIR gimbal feed** with motor hotspot infrared detection.
-   - Execute the 3-step action deck: **Designate (Detect)** $\to$ **Classify** $\to$ **Authorize Response**.
-   - Toggle **AI Assist** on to show real-time scikit-learn confidence and feature importance.
-4. **After-Action Review (AAR) (45s)**:
-   - Review the composite score and 3-pillar breakdown (Detection Latency, Classification Accuracy, Decision Quality).
-   - Walk through the **Decision Tree Rule Traversal** showing the exact rule node evaluated.
-   - Scrub the **Step-by-Step Flight Trajectory Replay** with dynamic distance labels and designation flags.
-   - Highlight the **Data-Driven Coaching Feedback** diagnosing trainee failure points.
-5. **Analytics & Unit Readiness (15s)**:
-   - Switch to **Analytics** to show the 28-session learning curve trend, reaction latency reduction, and head-to-head session comparator.
+1. **Sensor Reality & Swarm Trap (45 seconds)**:
+   - Navigate to **RADAR CIC** with scenario `Border Outpost (Swarm Wedge)`.
+   - Show how radar shows a single diamond contact with elevated RCS due to physical angular resolution limits ($3.0^\circ$).
+   - Switch to **Optical / EO Camera** or toggle sensor filters: the fine $0.5^\circ$ optical crosshairs separate the individual drones in the cluster.
+2. **Action Deck & Confidence Calibration (45 seconds)**:
+   - Designate target and select response.
+   - Adjust the **Self-Reported Confidence Slider (1–5)**: point out that the system explicitly measures operator metacognition.
+   - Show the **Scikit-Learn AI Assist** card displaying calibrated probabilities, Shannon prediction entropy, and uncertainty warnings.
+3. **After-Action Review & Explainable Tree (45 seconds)**:
+   - Complete the drill to enter the **AAR Debrief**.
+   - Show the **4-Pillar Score**: Detection, Classification, Decision, and Confidence Calibration.
+   - Point out the **Overconfidence Index (OCI)**: flags whether the operator was well-calibrated, overconfident, or underconfident.
+   - Inspect the **Target Engagement Table** showing leaf reason codes: `OPTIMAL_ENGAGEMENT`, `SWARM_TREATED_AS_SINGLE`, or `NO_CROSSCHECK`.
+4. **Adaptive Engine & Instructor Console (45 seconds)**:
+   - Switch to **ANALYTICS**: show the **6-Skill BKT Cognitive Mastery Profile** and click **Simulate Time (+3 Days)** to see the spaced retention retests come due.
+   - Open **INSTRUCTOR ROE**: demonstrate editing scoring weights and ROE decision rules with live hot-reloading!
+
+---
+
+## 8. Academic References & Citations
+
+1. **Richards, Mark A.** (2014). *Fundamentals of Radar Signal Processing* (2nd ed.). McGraw-Hill Education. (CA-CFAR, Swerling I target fluctuations, radar range equation, CRLB noise bounds).
+2. **Skolnik, Merrill I.** (2008). *Radar Handbook* (3rd ed.). McGraw-Hill. (Resolution cell geometry, atmospheric attenuation, pulse width resolution).
+3. **Besada, J. A., et al.** (2022). *Drone and Counter-UAS Sensor Technologies: A Comprehensive Survey*. IEEE Access. (Acoustic SPL acoustic decay, thermal infrared signature of drone motors, RF direction finding).
+4. **Corbett, A. T., & Anderson, J. R.** (1994). *Knowledge Tracing: Modeling the Acquisition of Procedural Knowledge*. User Modeling and User-Adapted Interaction, 4(4), 253-278. (Bayesian Knowledge Tracing formulation).

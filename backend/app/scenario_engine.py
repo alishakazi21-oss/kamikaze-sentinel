@@ -11,6 +11,9 @@ PRESET_SCENARIOS = [
         "seed": 101,
         "terrain": "border",
         "time_of_day": "dusk",
+        "weather": "clear",
+        "jamming_level": 0.0,
+        "sensor_bias_enabled": False,
         "threat_type": "single",
         "difficulty": 1,
         "sensor_state": "normal",
@@ -26,6 +29,9 @@ PRESET_SCENARIOS = [
         "seed": 202,
         "terrain": "urban",
         "time_of_day": "day",
+        "weather": "fog",
+        "jamming_level": 0.2,
+        "sensor_bias_enabled": True,
         "threat_type": "swarm_wedge",
         "difficulty": 2,
         "sensor_state": "degraded",
@@ -41,6 +47,9 @@ PRESET_SCENARIOS = [
         "seed": 303,
         "terrain": "coastal",
         "time_of_day": "night",
+        "weather": "rain",
+        "jamming_level": 0.8,
+        "sensor_bias_enabled": True,
         "threat_type": "decoy_mixed",
         "difficulty": 3,
         "sensor_state": "jammed",
@@ -56,6 +65,9 @@ PRESET_SCENARIOS = [
         "seed": 404,
         "terrain": "rural",
         "time_of_day": "day",
+        "weather": "clear",
+        "jamming_level": 0.0,
+        "sensor_bias_enabled": False,
         "threat_type": "swarm_leader",
         "difficulty": 2,
         "sensor_state": "normal",
@@ -84,6 +96,9 @@ class ScenarioEngine:
         seed: Optional[int] = None,
         terrain: str = "urban",
         time_of_day: str = "day",
+        weather: str = "clear",
+        jamming_level: float = 0.0,
+        sensor_bias_enabled: bool = False,
         threat_type: str = "single",
         difficulty: int = 1,
         sensor_state: str = "normal",
@@ -116,9 +131,9 @@ class ScenarioEngine:
         elif terrain == "border":
             clutter_density = 0.08
 
-        if sensor_state == "jammed":
+        if sensor_state == "jammed" or jamming_level > 0.4:
             clutter_density += 0.15
-        elif sensor_state == "degraded":
+        elif sensor_state == "degraded" or jamming_level > 0.1:
             clutter_density += 0.08
 
         scenario_name = title or f"Custom Tactical Drill: {threat_type.upper().replace('_', ' ')} in {terrain.title()}"
@@ -129,6 +144,9 @@ class ScenarioEngine:
             "seed": actual_seed,
             "terrain": terrain,
             "time_of_day": time_of_day,
+            "weather": weather,
+            "jamming_level": jamming_level,
+            "sensor_bias_enabled": sensor_bias_enabled,
             "threat_type": threat_type,
             "difficulty": difficulty,
             "sensor_state": sensor_state,

@@ -46,6 +46,9 @@ class Scenario(Base):
     target_count = Column(Integer, default=1)
     track_source_type = Column(String, default="native")  # native, replay, airsim
     target_definitions = Column(JSON, nullable=False)  # ground truth targets metadata
+    weather = Column(String, default="clear")  # clear, rain, fog
+    jamming_level = Column(Float, default=0.0)  # 0.0 to 1.0
+    sensor_bias_enabled = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     sessions = relationship("Session", back_populates="scenario")
@@ -92,6 +95,9 @@ class TargetEvent(Base):
     # Evaluation
     decision_outcome = Column(String, nullable=True)  # Optimal, Acceptable, Over-reaction, Under-reaction, Dangerous error
     decision_path = Column(String, nullable=True)  # rule explanation
+    reason_code = Column(String, nullable=True)  # Leaf reason code (e.g. OPTIMAL_ENGAGEMENT, NO_CROSSCHECK, SWARM_TREATED_AS_SINGLE)
+    confidence_rating = Column(Integer, nullable=True, default=4)  # 1 to 5
+    cross_checked = Column(Boolean, nullable=True, default=False)
     penalty = Column(Float, default=0.0)
     score_points = Column(Float, default=0.0)
 
@@ -104,9 +110,11 @@ class Score(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String, ForeignKey("sessions.id"), unique=True, nullable=False)
     total_score = Column(Float, nullable=False)  # 0 to 100
-    detection_score = Column(Float, nullable=False)  # out of 30 (or weight)
+    detection_score = Column(Float, nullable=False)  # out of 30
     classification_score = Column(Float, nullable=False)  # out of 30
-    decision_score = Column(Float, nullable=False)  # out of 40
+    decision_score = Column(Float, nullable=False)  # out of 30 (or 40)
+    calibration_score = Column(Float, default=100.0)  # out of 10
+    overconfidence_index = Column(Float, default=0.0)  # Mean Confidence - Fraction Correct
     
     avg_detection_latency = Column(Float, nullable=False)
     classification_accuracy = Column(Float, nullable=False)  # 0.0 to 1.0
@@ -119,6 +127,34 @@ class Score(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     session = relationship("Session", back_populates="score")
+
+
+class SkillProfile(Base):
+    __tablename__ = "skill_profiles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trainee_id = Column(String, ForeignKey("trainees.id"), nullable=False)
+    skill_key = Column(String, nullable=False)  # detection_clutter, classification, swarm_assessment, sensor_crosscheck, response_selection, decision_under_pressure
+    mastery_prob = Column(Float, default=0.10)  # BKT p(L) probability of mastery
+    trials_count = Column(Integer, default=0)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
+    trainee = relationship("Trainee")
+
+
+class ScheduledRetest(Base):
+    __tablename__ = "scheduled_retests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trainee_id = Column(String, ForeignKey("trainees.id"), nullable=False)
+    skill_key = Column(String, nullable=False)
+    scenario_id = Column(String, nullable=False)
+    interval_days = Column(Integer, default=3)  # 3 or 7
+    due_date = Column(DateTime, nullable=False)
+    completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    trainee = relationship("Trainee")
 
 
 class DifficultyHistory(Base):

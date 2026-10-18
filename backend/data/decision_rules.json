@@ -2,8 +2,10 @@
   "weights": {
     "detection": 0.30,
     "classification": 0.30,
-    "decision": 0.40
+    "decision": 0.30,
+    "calibration": 0.10
   },
+  "critical_range_m": 800.0,
   "latency_decay": {
     "difficulty_1": { "T_full": 6.0, "T_max": 20.0 },
     "difficulty_2": { "T_full": 4.5, "T_max": 15.0 },
@@ -24,6 +26,7 @@
       "proximity_threshold_m": 2500,
       "outcome": "Optimal",
       "points": 100,
+      "reason_code": "OPTIMAL_ENGAGEMENT",
       "explanation": "Immediate protective interception authorized against confirmed hostile threat penetrating tactical perimeter."
     },
     {
@@ -34,6 +37,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Acceptable",
       "points": 85,
+      "reason_code": "APPROPRIATE_CLASSIFIED_CORRECT",
       "explanation": "Alert raised on hostile target; timely escalation required as it nears perimeter."
     },
     {
@@ -44,6 +48,7 @@
       "proximity_threshold_m": 1500,
       "outcome": "Dangerous error",
       "points": 10,
+      "reason_code": "UNDER_REACTION_HOSTILE",
       "explanation": "Hostile threat inside critical perimeter was only monitored without countermeasures, risking base breach."
     },
     {
@@ -54,6 +59,7 @@
       "proximity_threshold_m": 2000,
       "outcome": "Under-reaction",
       "points": 50,
+      "reason_code": "UNDER_REACTION_HOSTILE",
       "explanation": "Hostile threat at close range had verification requested rather than executing immediate defensive protocols."
     },
     {
@@ -64,6 +70,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Optimal",
       "points": 100,
+      "reason_code": "OPTIMAL_ENGAGEMENT",
       "explanation": "Friendly asset correctly identified with IFF protocol and monitored safely."
     },
     {
@@ -74,6 +81,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Acceptable",
       "points": 80,
+      "reason_code": "APPROPRIATE_CLASSIFIED_CORRECT",
       "explanation": "Friendly asset observed; secondary IFF verification requested."
     },
     {
@@ -84,6 +92,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Over-reaction",
       "points": 50,
+      "reason_code": "ROE_VIOLATION",
       "explanation": "Full alert raised for verified friendly asset causing unnecessary tactical disturbance."
     },
     {
@@ -94,6 +103,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Dangerous error",
       "points": 0,
+      "reason_code": "FRIENDLY_FIRE_INTERCEPTION",
       "explanation": "CRITICAL: Trainee authorized kinetic/jamming countermeasure on a friendly blue-force drone."
     },
     {
@@ -104,6 +114,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Optimal",
       "points": 100,
+      "reason_code": "OPTIMAL_ENGAGEMENT",
       "explanation": "Commercial drone in airspace handled with verification and ATC cross-check."
     },
     {
@@ -114,6 +125,7 @@
       "proximity_threshold_m": 1200,
       "outcome": "Acceptable",
       "points": 85,
+      "reason_code": "APPROPRIATE_CLASSIFIED_CORRECT",
       "explanation": "Civilian drone approached restricted perimeter; air alert appropriately raised."
     },
     {
@@ -124,6 +136,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Over-reaction",
       "points": 40,
+      "reason_code": "OVER_REACTION_CIVILIAN",
       "explanation": "Unauthorized kinetic engagement of civil drone prior to escalation protocols."
     },
     {
@@ -134,6 +147,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Optimal",
       "points": 100,
+      "reason_code": "OPTIMAL_ENGAGEMENT",
       "explanation": "Biological track (bird flock / radar clutter) correctly dismissed without wasting tactical bandwidth."
     },
     {
@@ -144,6 +158,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Dangerous error",
       "points": 20,
+      "reason_code": "FALSE_ALARM_ENGAGED",
       "explanation": "Air defense engagement authorized against avian/radar clutter, depleting ammunition."
     },
     {
@@ -154,6 +169,7 @@
       "proximity_threshold_m": 99999,
       "outcome": "Acceptable",
       "points": 60,
+      "reason_code": "APPROPRIATE_CLASSIFIED_CORRECT",
       "explanation": "Standard protocol executed under ambiguous radar telemetry."
     }
   ]

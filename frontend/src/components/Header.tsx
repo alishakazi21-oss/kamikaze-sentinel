@@ -79,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'setup', label: 'SCENARIOS' },
             { id: 'aar', label: 'AAR DEBRIEF' },
             { id: 'analytics', label: 'ANALYTICS' },
+            { id: 'instructor', label: 'INSTRUCTOR ROE' },
             { id: 'diagnostics', label: 'SYSTEM' },
           ].map((tab) => (
             <button

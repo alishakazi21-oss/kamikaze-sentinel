@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SyntheticTrack, Scenario, TraineeProfile, TargetClass, ResponseOption } from '../types';
+import { SyntheticTrack, SensorPlot, Scenario, TraineeProfile, TargetClass, ResponseOption } from '../types';
 import { Radar2DView } from '../components/Radar2DView';
 import { Tactical3DView } from '../components/Tactical3DView';
 import { FlirCameraView } from '../components/FlirCameraView';
 import { TraineeActionDeck } from '../components/TraineeActionDeck';
+import { SensorStatusPanel } from '../components/SensorStatusPanel';
 import { soundFx } from '../utils/audio';
 import { Radio, AlertOctagon, CheckCircle2, ShieldAlert, Clock, Eye, Layers } from 'lucide-react';
 
@@ -21,13 +22,21 @@ export const LiveSimulationPage: React.FC<LiveSimulationPageProps> = ({
   const [sessionId, setSessionId] = useState<string>('');
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [activeTracks, setActiveTracks] = useState<SyntheticTrack[]>([]);
+  const [sensorPlots, setSensorPlots] = useState<SensorPlot[]>([]);
+  const [enabledSensors, setEnabledSensors] = useState<Record<string, boolean>>({
+    radar: true,
+    acoustic: true,
+    camera_eo: true,
+    camera_thermal: true,
+    rf: true,
+  });
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
 
-  // Trainee recorded events: targetId -> { detected, detectedAt, classification, response, aiFollowed }
+  // Trainee recorded events: targetId -> { detected, detectedAt, classification, response, aiFollowed, confidenceRating }
   const [eventsMap, setEventsMap] = useState<
-    Map<string, { detected: boolean; detectedAt?: number; classification?: string; response?: string; aiFollowed?: boolean }>
+    Map<string, { detected: boolean; detectedAt?: number; classification?: string; response?: string; aiFollowed?: boolean; confidenceRating?: number }>
   >(new Map());
 
   const timerRef = useRef<number | null>(null);
@@ -79,7 +88,9 @@ export const LiveSimulationPage: React.FC<LiveSimulationPageProps> = ({
         if (res.ok) {
           const data = await res.json();
           const trks: SyntheticTrack[] = data.tracks || [];
+          const plots: SensorPlot[] = data.sensor_plots || [];
           setActiveTracks(trks);
+          setSensorPlots(plots);
 
           // Default select first track if none selected
           if (!selectedTrackId && trks.length > 0) {
@@ -122,11 +133,12 @@ export const LiveSimulationPage: React.FC<LiveSimulationPageProps> = ({
     }
   };
 
-  const handleClassify = (track: SyntheticTrack, cls: TargetClass, aiFollowed?: boolean) => {
+  const handleClassify = (track: SyntheticTrack, cls: TargetClass, aiFollowed?: boolean, confidenceRating: number = 4) => {
     const nextMap = new Map(eventsMap);
     const existing = nextMap.get(track.track_id) || { detected: true, detectedAt: elapsedTime };
     existing.classification = cls;
     existing.aiFollowed = aiFollowed;
+    existing.confidenceRating = confidenceRating;
     nextMap.set(track.track_id, existing);
     setEventsMap(nextMap);
 
@@ -140,6 +152,7 @@ export const LiveSimulationPage: React.FC<LiveSimulationPageProps> = ({
           elapsed_seconds: elapsedTime,
           classification: cls,
           ai_followed: aiFollowed,
+          confidence_rating: confidenceRating,
         }),
       }).catch(console.error);
     }
@@ -183,6 +196,7 @@ export const LiveSimulationPage: React.FC<LiveSimulationPageProps> = ({
           trainee_response: ev.response,
           proximity_m: trk?.range_m || 1500,
           ai_followed: ev.aiFollowed,
+          confidence_rating: ev.confidenceRating || 4,
         });
       }
 
@@ -283,10 +297,25 @@ export const LiveSimulationPage: React.FC<LiveSimulationPageProps> = ({
       {/* Main Simulation Layout: Left View + Right Telemetry & Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Radar / 3D Canvas View (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col items-center justify-center bg-slate-950/60 border border-slate-800 rounded-2xl p-4 shadow-2xl">
+        <div className="lg:col-span-7 flex flex-col items-center justify-center bg-slate-950/60 border border-slate-800 rounded-2xl p-4 shadow-2xl space-y-3">
+          {viewMode === '2d' && (
+            <div className="w-full">
+              <SensorStatusPanel
+                weather={scenario.weather}
+                jammingLevel={scenario.jamming_level}
+                sensorBiasEnabled={scenario.sensor_bias_enabled}
+                enabledSensors={enabledSensors}
+                onToggleSensor={(sensorKey) =>
+                  setEnabledSensors((prev) => ({ ...prev, [sensorKey]: !prev[sensorKey] }))
+                }
+              />
+            </div>
+          )}
           {viewMode === '2d' ? (
             <Radar2DView
               tracks={activeTracks}
+              sensorPlots={sensorPlots}
+              enabledSensors={enabledSensors}
               selectedTrackId={selectedTrackId}
               onSelectTrack={(id) => setSelectedTrackId(id)}
               terrain={scenario.terrain}

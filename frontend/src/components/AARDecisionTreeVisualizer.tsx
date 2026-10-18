@@ -75,39 +75,71 @@ export const AARDecisionTreeVisualizer: React.FC<AARDecisionTreeVisualizerProps>
 
       {selectedDetail ? (
         <div className="space-y-4">
-          {/* Visual Decision Tree Nodes */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-center font-mono text-xs">
-            {/* Node 1: True Class */}
-            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1 relative">
-              <span className="text-[10px] text-slate-500 uppercase">1. Ground Truth</span>
-              <div className="font-bold text-slate-200 text-sm flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-cyan-400" />
-                {selectedDetail.true_class.toUpperCase()}
+          {/* Visual 4-Question Decision Tree Nodes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-stretch font-mono text-xs">
+            {/* Q1: Detection */}
+            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] text-cyan-400 font-bold uppercase">Q1: DETECTED IN TIME?</span>
+                <div className="font-bold text-slate-200 text-sm flex items-center gap-1.5 mt-0.5">
+                  <ShieldAlert className="w-4 h-4 text-cyan-400" />
+                  {selectedDetail.true_class.toUpperCase()}
+                </div>
               </div>
-              <div className="text-[11px] text-slate-400">
-                Detection latency: {selectedDetail.detection_latency.toFixed(1)}s
-              </div>
-            </div>
-
-            <div className="hidden md:flex justify-center text-slate-600">
-              <ArrowRight className="w-5 h-5 text-cyan-500" />
-            </div>
-
-            {/* Node 2: Trainee Classification & Response */}
-            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1">
-              <span className="text-[10px] text-slate-500 uppercase">2. Trainee Action</span>
-              <div className="font-bold text-slate-200 text-sm">
-                {selectedDetail.trainee_classification ? selectedDetail.trainee_classification.toUpperCase() : 'NONE'}
-              </div>
-              <div className="text-[11px] text-amber-400 font-semibold truncate">
-                Action: {selectedDetail.trainee_response ? selectedDetail.trainee_response.replace(/_/g, ' ') : 'NO RESPONSE'}
+              <div className="text-[11px] text-slate-300">
+                {selectedDetail.detected ? (
+                  <span className="text-emerald-400 font-bold">YES ({selectedDetail.detection_latency.toFixed(1)}s)</span>
+                ) : (
+                  <span className="text-red-400 font-bold">MISSED CONTACT</span>
+                )}
               </div>
             </div>
 
-            {/* Node 3: Evaluated Outcome */}
-            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-2">
-              <span className="text-[10px] text-slate-500 uppercase">3. Decision Tree Outcome</span>
+            {/* Q2: Classification */}
+            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] text-emerald-400 font-bold uppercase">Q2: CLASSIFIED CORRECT?</span>
+                <div className="font-bold text-slate-200 text-sm mt-0.5">
+                  {selectedDetail.trainee_classification ? selectedDetail.trainee_classification.toUpperCase() : 'NONE'}
+                </div>
+              </div>
+              <div className="text-[11px]">
+                {selectedDetail.classification_correct ? (
+                  <span className="text-emerald-400 font-bold">CORRECT (+30 PTS)</span>
+                ) : (
+                  <span className="text-red-400 font-bold">MISCLASSIFIED</span>
+                )}
+              </div>
+            </div>
+
+            {/* Q3: Response appropriate under ROE */}
+            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] text-amber-400 font-bold uppercase">Q3: ROE RESPONSE?</span>
+                <div className="font-bold text-amber-300 text-xs mt-0.5 truncate">
+                  {selectedDetail.trainee_response ? selectedDetail.trainee_response.replace(/_/g, ' ') : 'NO RESPONSE'}
+                </div>
+              </div>
               <div>{getOutcomeBadge(selectedDetail.decision_outcome)}</div>
+            </div>
+
+            {/* Q4: Sensor Cross-Checked & Leaf Reason */}
+            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] text-purple-400 font-bold uppercase">Q4: SENSOR CROSS-CHECK?</span>
+                <div className="font-bold text-xs mt-0.5 text-slate-300">
+                  {selectedDetail.cross_checked ? (
+                    <span className="text-emerald-400 font-bold">CROSS-CHECKED (EO/RF)</span>
+                  ) : (
+                    <span className="text-slate-400">SINGLE SENSOR ONLY</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-cyan-500/40 bg-cyan-950/80 text-cyan-300 block text-center truncate">
+                  {selectedDetail.reason_code || 'OPTIMAL_ENGAGEMENT'}
+                </span>
+              </div>
             </div>
           </div>
 

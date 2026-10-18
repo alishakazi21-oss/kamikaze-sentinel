@@ -6,6 +6,7 @@ import { ScenarioSetupPage } from './pages/ScenarioSetupPage';
 import { LiveSimulationPage } from './pages/LiveSimulationPage';
 import { AARPage } from './pages/AARPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { InstructorPage } from './pages/InstructorPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { TraineeProfile, UnitProfile, Scenario, AARReport } from './types';
 import { soundFx } from './utils/audio';
@@ -270,6 +271,8 @@ export function App() {
         {currentTab === 'analytics' && (
           <AnalyticsPage currentTrainee={currentTrainee} units={units} />
         )}
+
+        {currentTab === 'instructor' && <InstructorPage />}
 
         {currentTab === 'diagnostics' && <DiagnosticsPage />}
       </main>

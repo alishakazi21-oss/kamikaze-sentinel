@@ -23,6 +23,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ currentTrainee, un
   const [compareSessionA, setCompareSessionA] = useState<string>('');
   const [compareSessionB, setCompareSessionB] = useState<string>('');
 
+  const [skillProfiles, setSkillProfiles] = useState<any[]>([]);
+  const [scheduledRetests, setScheduledRetests] = useState<any[]>([]);
+  const [isSimulatingTime, setIsSimulatingTime] = useState<boolean>(false);
+
   // Fetch trainee history
   useEffect(() => {
     if (!currentTrainee) return;
@@ -38,7 +42,39 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ currentTrainee, un
         }
       })
       .catch((e) => console.error(e));
+
+    fetchSkillsAndRetests();
   }, [currentTrainee]);
+
+  const fetchSkillsAndRetests = () => {
+    if (!currentTrainee) return;
+    fetch(`/api/trainees/${currentTrainee.id}/skills`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.skills) setSkillProfiles(data.skills);
+      })
+      .catch((e) => console.error(e));
+
+    fetch(`/api/trainees/${currentTrainee.id}/retests`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setScheduledRetests(data);
+      })
+      .catch((e) => console.error(e));
+  };
+
+  const handleSimulateAdvanceTime = async (days: number) => {
+    setIsSimulatingTime(true);
+    soundFx.playButtonClick();
+    try {
+      await fetch(`/api/retests/simulate-time?days=${days}`, { method: 'POST' });
+      fetchSkillsAndRetests();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSimulatingTime(false);
+    }
+  };
 
   // Fetch unit aggregate
   useEffect(() => {
@@ -86,6 +122,142 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ currentTrainee, un
             ))}
           </select>
         </div>
+      </div>
+
+      {/* 6-Skill Cognitive Mastery Grid (Bayesian Knowledge Tracing) */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+          <div>
+            <h2 className="text-base font-tactical font-bold text-slate-100 flex items-center gap-2">
+              <Crosshair className="w-4 h-4 text-cyan-400" />
+              6-SKILL COGNITIVE MASTERY PROFILE (BAYESIAN KNOWLEDGE TRACING)
+            </h2>
+            <p className="text-xs text-slate-400">
+              Real-time latent mastery probability P(L) and predicted success rate across the 6 core counter-drone competencies.
+            </p>
+          </div>
+          <span className="text-[11px] px-2.5 py-1 rounded bg-slate-950 border border-slate-700 text-slate-300">
+            Target Zone: ~70% Expected Success
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {skillProfiles.map((sp) => {
+            const isMastered = sp.is_mastered;
+            return (
+              <div
+                key={sp.skill_key}
+                className={`bg-slate-950/80 border rounded-xl p-4 space-y-2.5 transition ${
+                  isMastered ? 'border-emerald-500/40' : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 truncate pr-2">{sp.display_name}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                      isMastered
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-600/50'
+                        : 'bg-amber-950 text-amber-400 border border-amber-600/50'
+                    }`}
+                  >
+                    {isMastered ? 'MASTERED' : 'IN TRAINING'}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-400">Cognitive Mastery P(L):</span>
+                    <span className={`font-bold ${isMastered ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                      {sp.mastery_pct}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isMastered ? 'bg-emerald-500' : 'bg-cyan-500'
+                      }`}
+                      style={{ width: `${Math.min(100, sp.mastery_pct)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-900">
+                  <span>Exp Success: {sp.expected_success_rate}%</span>
+                  <span>Evaluations: {sp.trials_count}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Retention Retest Scheduler (+3 & +7 Days) */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+          <div>
+            <h2 className="text-base font-tactical font-bold text-slate-100 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-purple-400" />
+              RETENTION & TRANSFER RETEST SCHEDULER (3D / 7D SPACED RETESTS)
+            </h2>
+            <p className="text-xs text-slate-400">
+              Spaced retention drills to evaluate skill decay and longitudinal knowledge retention over time.
+            </p>
+          </div>
+
+          <button
+            disabled={isSimulatingTime}
+            onClick={() => handleSimulateAdvanceTime(3)}
+            className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-slate-950 font-bold text-xs transition shadow flex items-center gap-1.5 self-start md:self-auto"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            {isSimulatingTime ? 'ADVANCING CLOCK...' : 'SIMULATE TIME (+3 DAYS)'}
+          </button>
+        </div>
+
+        {scheduledRetests.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {scheduledRetests.map((retest) => {
+              const isDue = retest.is_due_now;
+              return (
+                <div
+                  key={retest.id}
+                  className={`bg-slate-950 border rounded-xl p-3.5 space-y-2 text-xs ${
+                    isDue ? 'border-amber-500/80 shadow-lg shadow-amber-500/10' : 'border-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-200">{retest.skill_name}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        isDue
+                          ? 'bg-amber-950 text-amber-300 border border-amber-500 animate-pulse'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {isDue ? 'RETEST DUE NOW' : `+${retest.interval_days}D SCHEDULED`}
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-slate-400 flex justify-between">
+                    <span>Due Date:</span>
+                    <span className="text-slate-300 font-mono">
+                      {new Date(retest.due_date).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-slate-400 flex justify-between">
+                    <span>Target Scenario:</span>
+                    <span className="text-cyan-400 font-mono">{retest.scenario_id}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-slate-500 text-xs py-3 text-center">
+            Complete training sorties to automatically generate 3-day and 7-day retention retests.
+          </div>
+        )}
       </div>
 
       {/* Trainee Progression Charts */}

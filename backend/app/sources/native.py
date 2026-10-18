@@ -2,6 +2,7 @@ import math
 import random
 from typing import List, Dict, Any, Optional
 from .base import TrackSource, TargetTelemetry
+from .sensor_reality import SensorRealityEngine, SensorPlot
 
 
 class NativeSimSource(TrackSource):
@@ -9,11 +10,13 @@ class NativeSimSource(TrackSource):
     Default simulator source requiring zero GPU, zero Unreal Engine, zero internet.
     Generates deterministic seeded procedural drone paths and tactical swarms
     (Leader-Follower, Wedge, Line, Dispersed) with realistic kinematics.
+    Coupled with SensorRealityEngine for multi-sensor radar/acoustic/camera reports.
     """
 
     def __init__(self, seed: Optional[int] = 42):
         self.seed = seed or 42
         self.rng = random.Random(self.seed)
+        self.sensor_engine = SensorRealityEngine(seed=self.seed)
         self.scenario_config: Dict[str, Any] = {}
         self.targets: List[Dict[str, Any]] = []
 
@@ -30,6 +33,7 @@ class NativeSimSource(TrackSource):
         self.scenario_config = scenario_config
         self.seed = scenario_config.get("seed", 42)
         self.rng = random.Random(self.seed)
+        self.sensor_engine = SensorRealityEngine(seed=self.seed)
 
         target_count = scenario_config.get("target_count", 4)
         threat_type = scenario_config.get("threat_type", "single")
@@ -262,3 +266,33 @@ class NativeSimSource(TrackSource):
             ))
 
         return results
+
+    def get_sensor_reports(
+        self,
+        elapsed_seconds: float,
+        sensor_state: str = "normal",
+        sensor_reliability: float = 1.0,
+        terrain: str = "urban",
+        time_of_day: str = "day",
+        weather: str = "clear",
+        jamming_level: float = 0.0
+    ) -> List[SensorPlot]:
+        """
+        Converts ground-truth drone positions into noisy physical sensor reports
+        (Radar, Acoustic Array, EO Camera, Thermal Camera).
+        """
+        ground_truth = self.get_ground_truth(elapsed_seconds)
+        if self.sensor_engine is None:
+            self.sensor_engine = SensorRealityEngine(seed=self.seed)
+
+        return self.sensor_engine.generate_all_plots(
+            ground_truth=ground_truth,
+            timestamp=elapsed_seconds,
+            sensor_state=sensor_state,
+            sensor_reliability=sensor_reliability,
+            terrain=terrain,
+            time_of_day=time_of_day,
+            weather=weather,
+            jamming_level=jamming_level
+        )
+

@@ -5,9 +5,9 @@ import { ShieldAlert, Crosshair, HelpCircle, Eye, AlertTriangle, Zap, Bot, Check
 
 interface TraineeActionDeckProps {
   selectedTrack: SyntheticTrack | null;
-  targetEvents: Map<string, { detected: boolean; classification?: string; response?: string; aiFollowed?: boolean }>;
+  targetEvents: Map<string, { detected: boolean; classification?: string; response?: string; aiFollowed?: boolean; confidenceRating?: number }>;
   onDetect: (track: SyntheticTrack) => void;
-  onClassify: (track: SyntheticTrack, targetClass: TargetClass, aiFollowed?: boolean) => void;
+  onClassify: (track: SyntheticTrack, targetClass: TargetClass, aiFollowed?: boolean, confidenceRating?: number) => void;
   onRespond: (track: SyntheticTrack, response: ResponseOption) => void;
 }
 
@@ -21,6 +21,7 @@ export const TraineeActionDeck: React.FC<TraineeActionDeckProps> = ({
   const [aiEnabled, setAiEnabled] = useState<boolean>(true);
   const [aiResult, setAiResult] = useState<AIAssistResult | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [confidenceRating, setConfidenceRating] = useState<number>(4);
 
   // Current track action status
   const currentEvent = selectedTrack ? targetEvents.get(selectedTrack.track_id) : undefined;
@@ -69,7 +70,7 @@ export const TraineeActionDeck: React.FC<TraineeActionDeckProps> = ({
     if (!selectedTrack) return;
     soundFx.playButtonClick();
     const followedAI = aiResult ? cls === aiResult.suggested_class : false;
-    onClassify(selectedTrack, cls, followedAI);
+    onClassify(selectedTrack, cls, followedAI, confidenceRating);
   };
 
   const handleRespondClick = (resp: ResponseOption) => {
@@ -130,15 +131,36 @@ export const TraineeActionDeck: React.FC<TraineeActionDeckProps> = ({
 
           {aiResult && (
             <>
-              <div className="text-slate-200">
-                Suggested Class:{' '}
-                <span className="font-bold uppercase text-amber-300">
-                  {aiResult.suggested_class.replace('_', ' ')}
-                </span>
+              <div className="flex items-center justify-between text-slate-200">
+                <div>
+                  Suggested Class:{' '}
+                  <span className="font-bold uppercase text-amber-300">
+                    {aiResult.suggested_class.replace('_', ' ')}
+                  </span>
+                </div>
+                {aiResult.is_uncertain ? (
+                  <span className="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-600/60 font-bold text-[10px] animate-pulse">
+                    HIGH UNCERTAINTY (VERIFY)
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-600/60 font-bold text-[10px]">
+                    UNCERTAINTY: {((aiResult.uncertainty_score ?? 0.1) * 100).toFixed(0)}%
+                  </span>
+                )}
               </div>
               <p className="text-slate-400 text-[11px] leading-relaxed">
                 {aiResult.explanation}
               </p>
+              {aiResult.class_probabilities && (
+                <div className="grid grid-cols-4 gap-1 pt-1 text-[9px] text-slate-400 border-t border-cyan-900/40">
+                  {Object.entries(aiResult.class_probabilities).map(([cls, prob]) => (
+                    <div key={cls} className="text-center">
+                      <span className="uppercase text-[8px] text-slate-500 block truncate">{cls.replace('false_alarm', 'clutter')}</span>
+                      <span className="font-bold text-slate-300">{Math.round((prob as number) * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -185,6 +207,37 @@ export const TraineeActionDeck: React.FC<TraineeActionDeckProps> = ({
               {currentClassification.replace('_', ' ')}
             </span>
           )}
+        </div>
+
+        {/* Confidence Slider (1 to 5) */}
+        <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 space-y-1.5">
+          <div className="flex justify-between items-center text-[11px] font-mono">
+            <span className="text-slate-400">OPERATOR CONFIDENCE:</span>
+            <span className="font-bold text-cyan-400">
+              {confidenceRating} / 5 · {
+                confidenceRating === 1 ? 'Very Low / Speculative' :
+                confidenceRating === 2 ? 'Low / Uncertain' :
+                confidenceRating === 3 ? 'Moderate / Plausible' :
+                confidenceRating === 4 ? 'High / Confident' : 'Very High / Certain'
+              }
+            </span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            step={1}
+            value={confidenceRating}
+            onChange={(e) => setConfidenceRating(parseInt(e.target.value, 10))}
+            className="w-full accent-cyan-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+          />
+          <div className="flex justify-between text-[9px] font-mono text-slate-500 px-0.5">
+            <span>1: Guess</span>
+            <span>2: Uncertain</span>
+            <span>3: Plausible</span>
+            <span>4: Confident</span>
+            <span>5: Certain</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">

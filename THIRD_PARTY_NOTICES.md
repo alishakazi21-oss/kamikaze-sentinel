@@ -1,6 +1,6 @@
 # THIRD PARTY NOTICES AND CITATIONS
 
-ASTRA VEER (AI-Enabled Drone & Counter-Drone Threat Simulation Trainer - SIH 247) utilizes and references several open-source concepts, architectures, and libraries. In compliance with open-source licensing principles, the following notices apply:
+ASTRA VEER // VYOM-RAKSHAK (AI-Enabled Drone & Counter-Drone Threat Simulation Trainer - SIH 247) utilizes and references several open-source concepts, architectures, and academic textbooks. In compliance with open-source licensing principles, the following notices and citations apply:
 
 ---
 
@@ -35,7 +35,25 @@ ASTRA VEER (AI-Enabled Drone & Counter-Drone Threat Simulation Trainer - SIH 247
 
 ---
 
-## 2. Open Source Libraries
+## 2. Academic Sensor Physics & Cognitive Modeling Citations
+
+The sensor simulation algorithms and adaptive cognitive models in VYOM-RAKSHAK are built upon established, peer-reviewed open literature:
+
+1. **Richards, Mark A.** (2014). *Fundamentals of Radar Signal Processing* (2nd ed.). McGraw-Hill Education.  
+   *Used for: Monostatic radar range equation, Swerling Case 1 target fluctuation statistics, Cell-Averaging Constant False Alarm Rate (CA-CFAR) detection, and Cramér-Rao Lower Bound (CRLB) measurement noise modeling.*
+
+2. **Skolnik, Merrill I.** (2008). *Radar Handbook* (3rd ed.). McGraw-Hill.  
+   *Used for: Radar angular and range resolution cell equations ($\Delta R = c\tau/2$, $\Delta\theta \approx \lambda/D$), atmospheric attenuation in adverse weather, and radar clutter modeling.*
+
+3. **Besada, J. A., Bernardos, A. M., Bergesio, L., & Vaquero, D.** (2022). *Drone and Counter-UAS Sensor Technologies: A Comprehensive Survey*. IEEE Access.  
+   *Used for: Acoustic sound pressure level (SPL) spherical attenuation ($SL_0 = 72\text{ dB}$, $\alpha = 0.008\text{ dB/m}$), electro-optical (EO) resolution vs. thermal infrared (FLIR) motor hotspot signatures ($\Delta T \approx 12\text{ K}$), and RF direction-finder triangulation.*
+
+4. **Corbett, A. T., & Anderson, J. R.** (1994). *Knowledge Tracing: Modeling the Acquisition of Procedural Knowledge*. User Modeling and User-Adapted Interaction, 4(4), 253–278.  
+   *Used for: Bayesian Knowledge Tracing (BKT) 6-skill latent mastery modeling ($P(L_0), P(T), P(G), P(S)$).*
+
+---
+
+## 3. Open Source Libraries
 
 The project uses the following permissively licensed libraries (MIT / BSD / Apache 2.0):
 - **FastAPI / Starlette / Pydantic** (MIT License)

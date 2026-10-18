@@ -75,6 +75,9 @@ export const AARPage: React.FC<AARPageProps> = ({
       decision_outcome: (e.decision_outcome as any) || 'Optimal',
       decision_score_pts: e.score_points,
       decision_path: e.decision_path || 'Standard defensive procedure',
+      reason_code: e.reason_code || 'OPTIMAL_ENGAGEMENT',
+      confidence_rating: e.confidence_rating || 4,
+      cross_checked: e.cross_checked || false,
       ai_suggested_class: e.true_class,
       ai_followed: e.ai_followed,
       ai_agreed: e.trainee_classification === e.true_class,
@@ -112,91 +115,131 @@ export const AARPage: React.FC<AARPageProps> = ({
         </div>
       </div>
 
-      {/* 3 Pillars Score Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* 4 Pillars of Vyom-Rakshak Score Breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Pillar 1: Detection */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 font-mono">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5 font-mono">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-bold uppercase flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-cyan-400" /> 1. DETECTION LATENCY
+              <Clock className="w-3.5 h-3.5 text-cyan-400" /> 1. DETECTION
             </span>
-            <span className="text-sm font-bold text-cyan-300">
-              {score.detection_score.toFixed(1)} / 30.0 PTS
+            <span className="text-xs font-bold text-cyan-300">
+              {score.detection_score.toFixed(1)} / 30 PTS
             </span>
           </div>
 
           <div className="space-y-1">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-[11px]">
               <span className="text-slate-400">Avg Reaction Latency:</span>
               <span className="text-slate-100 font-bold">{score.avg_detection_latency.toFixed(2)}s</span>
             </div>
-            <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
               <div
                 className="h-full bg-cyan-500 rounded-full"
-                style={{ width: `${(score.detection_score / 30) * 100}%` }}
+                style={{ width: `${Math.min(100, (score.detection_score / 30) * 100)}%` }}
               />
             </div>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Evaluated on linear decay window ({scenario.difficulty === 1 ? '6s full mark' : scenario.difficulty === 2 ? '4.5s' : '3s'}).
+          <p className="text-[10px] text-slate-400">
+            Linear decay before 800m critical perimeter.
           </p>
         </div>
 
         {/* Pillar 2: Classification */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 font-mono">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5 font-mono">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-bold uppercase flex items-center gap-1.5">
-              <Crosshair className="w-4 h-4 text-emerald-400" /> 2. CLASSIFICATION ACCURACY
+              <Crosshair className="w-3.5 h-3.5 text-emerald-400" /> 2. CLASSIFY
             </span>
-            <span className="text-sm font-bold text-emerald-300">
-              {score.classification_score.toFixed(1)} / 30.0 PTS
+            <span className="text-xs font-bold text-emerald-300">
+              {score.classification_score.toFixed(1)} / 30 PTS
             </span>
           </div>
 
           <div className="space-y-1">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-[11px]">
               <span className="text-slate-400">Accuracy Rate:</span>
               <span className="text-emerald-400 font-bold">
                 {Math.round(score.classification_accuracy * 100)}%
               </span>
             </div>
-            <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
               <div
                 className="h-full bg-emerald-500 rounded-full"
                 style={{ width: `${score.classification_accuracy * 100}%` }}
               />
             </div>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Zero friendly-fire tolerance. Hostiles differentiated from commercial craft and birds.
+          <p className="text-[10px] text-slate-400">
+            Discriminates blue force & birds from hostiles.
           </p>
         </div>
 
         {/* Pillar 3: Decision Quality */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 font-mono">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5 font-mono">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400 font-bold uppercase flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-400" /> 3. DECISION QUALITY
+              <Award className="w-3.5 h-3.5 text-amber-400" /> 3. DECISION
             </span>
-            <span className="text-sm font-bold text-amber-300">
-              {score.decision_score.toFixed(1)} / 40.0 PTS
+            <span className="text-xs font-bold text-amber-300">
+              {score.decision_score.toFixed(1)} / 30 PTS
             </span>
           </div>
 
           <div className="space-y-1">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-[11px]">
               <span className="text-slate-400">Optimal Choices:</span>
               <span className="text-amber-400 font-bold">{score.optimal_decisions_pct}%</span>
             </div>
-            <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
               <div
                 className="h-full bg-amber-500 rounded-full"
                 style={{ width: `${score.optimal_decisions_pct}%` }}
               />
             </div>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Evaluated by rule table on proximity, true threat nature, and defensive escalation.
+          <p className="text-[10px] text-slate-400">
+            Tactical escalation aligned with operational ROE.
+          </p>
+        </div>
+
+        {/* Pillar 4: Calibration & OCI */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5 font-mono">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-bold uppercase flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> 4. CALIBRATION
+            </span>
+            <span className="text-xs font-bold text-purple-300">
+              {(score.calibration_score ?? 100.0).toFixed(1)} / 100 PTS
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-slate-400">Overconfidence (OCI):</span>
+              <span className={`font-bold ${
+                Math.abs(score.overconfidence_index ?? 0) <= 0.15
+                  ? 'text-emerald-400'
+                  : (score.overconfidence_index ?? 0) > 0.15
+                  ? 'text-red-400'
+                  : 'text-amber-400'
+              }`}>
+                {(score.overconfidence_index ?? 0) > 0 ? `+${(score.overconfidence_index ?? 0).toFixed(2)}` : (score.overconfidence_index ?? 0).toFixed(2)}
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-purple-500 rounded-full"
+                style={{ width: `${Math.min(100, (score.calibration_score ?? 100) )}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400">
+            {Math.abs(score.overconfidence_index ?? 0) <= 0.15
+              ? 'Well calibrated: Confidence matches empirical skill.'
+              : (score.overconfidence_index ?? 0) > 0.15
+              ? 'Overconfident: High certainty on incorrect decisions.'
+              : 'Underconfident: Hesitant certainty despite high accuracy.'}
           </p>
         </div>
       </div>
@@ -226,6 +269,104 @@ export const AARPage: React.FC<AARPageProps> = ({
 
       {/* Decision-Tree Rule Traversal Visualizer */}
       <AARDecisionTreeVisualizer details={detailsList} />
+
+      {/* Target Engagement & Reason Codes Table */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-3 font-mono text-xs">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+          <span className="text-slate-200 font-bold uppercase flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-cyan-400" /> TARGET ENGAGEMENTS & LEAF REASON CODES
+          </span>
+          <span className="text-slate-400 text-[11px]">
+            {target_events.length} CONTACTS EVALUATED
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[11px]">
+            <thead className="bg-slate-950 text-slate-400 uppercase text-[10px]">
+              <tr>
+                <th className="py-2.5 px-3">Target ID</th>
+                <th className="py-2.5 px-3">Ground Truth</th>
+                <th className="py-2.5 px-3">Trainee Class</th>
+                <th className="py-2.5 px-3">Response</th>
+                <th className="py-2.5 px-3">Leaf Reason Code</th>
+                <th className="py-2.5 px-3">Confidence</th>
+                <th className="py-2.5 px-3">Cross-Checked</th>
+                <th className="py-2.5 px-3">Outcome</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {target_events.map((ev) => {
+                const isCorrect = ev.trainee_classification === ev.true_class;
+                const reason = ev.reason_code || (isCorrect ? 'OPTIMAL_ENGAGEMENT' : 'MISCLASSIFICATION');
+                const badgeClass =
+                  reason === 'OPTIMAL_ENGAGEMENT'
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-600/60'
+                    : reason === 'APPROPRIATE_CLASSIFIED_CORRECT'
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-600/60'
+                    : reason === 'SWARM_TREATED_AS_SINGLE'
+                    ? 'bg-amber-950 text-amber-300 border-amber-600/60'
+                    : reason === 'NO_CROSSCHECK'
+                    ? 'bg-yellow-950 text-yellow-300 border-yellow-600/60'
+                    : reason === 'FALSE_ALARM_ENGAGED'
+                    ? 'bg-orange-950 text-orange-300 border-orange-600/60'
+                    : reason === 'FRIENDLY_FIRE_INTERCEPTION'
+                    ? 'bg-red-950 text-red-300 border-red-600/60 animate-pulse'
+                    : reason === 'MISSED_HOSTILE' || reason === 'LATE_DETECTION'
+                    ? 'bg-red-950 text-red-400 border-red-700/60'
+                    : 'bg-purple-950 text-purple-300 border-purple-600/60';
+
+                return (
+                  <tr key={ev.target_id} className="hover:bg-slate-850 transition">
+                    <td className="py-2.5 px-3 font-bold text-slate-200">{ev.target_id}</td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-800 text-slate-300 uppercase">
+                        {ev.true_class}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 font-bold">
+                      <span className={isCorrect ? 'text-emerald-400' : 'text-red-400'}>
+                        {ev.trainee_classification?.toUpperCase() || 'UNCLASSIFIED'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-300">
+                      {ev.trainee_response?.replace(/_/g, ' ') || 'NONE'}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded border text-[9px] font-bold ${badgeClass}`}>
+                        {reason}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-cyan-300 font-bold">
+                      {ev.confidence_rating ? `${ev.confidence_rating}/5` : '4/5'}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      {ev.cross_checked ? (
+                        <span className="text-emerald-400 font-bold">YES (EO/RF)</span>
+                      ) : (
+                        <span className="text-slate-500">NO</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span
+                        className={`font-bold ${
+                          ev.decision_outcome === 'Optimal'
+                            ? 'text-emerald-400'
+                            : ev.decision_outcome === 'Acceptable'
+                            ? 'text-cyan-400'
+                            : 'text-red-400'
+                        }`}
+                      >
+                        {ev.decision_outcome}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Flight Path Replay Scrubber (inspired by szymon-tulodziecki) */}
       {scenario.target_definitions && (
