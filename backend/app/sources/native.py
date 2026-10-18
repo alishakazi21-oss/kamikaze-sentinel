@@ -23,7 +23,7 @@ class NativeSimSource(TrackSource):
     def is_available(self) -> Dict[str, Any]:
         return {
             "source_type": "native",
-            "name": "ASTRA VEER Native Simulator (Built-in)",
+            "name": "VYOM RAKSHAK Native Simulator (Built-in)",
             "status": "ready",
             "available": True,
             "description": "Deterministic CPU physics engine with tactical swarm formations (3-12 drones), terrain clutter, and seeded kinematics."

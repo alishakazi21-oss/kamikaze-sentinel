@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-tactical font-black text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-200 to-emerald-400">
-                ASTRA VEER
+                VYOM RAKSHAK
               </span>
               <span className="px-1.5 py-0.2 bg-cyan-950 text-cyan-400 border border-cyan-700/60 rounded text-[10px] font-mono font-bold">
                 SIH 247

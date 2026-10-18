@@ -97,7 +97,7 @@ export const DiagnosticsPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
           <div className="space-y-2 text-slate-300 text-[11px] leading-relaxed">
             <p>
-              ASTRA VEER utilizes an authentic, lightweight <span className="text-cyan-400 font-bold">RandomForestClassifier</span> trained
+              VYOM RAKSHAK utilizes an authentic, lightweight <span className="text-cyan-400 font-bold">RandomForestClassifier</span> trained
               on synthetic multi-dimensional radar Doppler signatures, RCS cross-sections, and RF datalinks.
             </p>
             <p>
@@ -143,7 +143,7 @@ export const DiagnosticsPage: React.FC = () => {
               <tr>
                 <th className="py-2.5 px-3">Repository</th>
                 <th className="py-2.5 px-3">Declared License</th>
-                <th className="py-2.5 px-3">Role in Astra Veer</th>
+                <th className="py-2.5 px-3">Role in Vyom Rakshak</th>
                 <th className="py-2.5 px-3">Compliance Status</th>
               </tr>
             </thead>

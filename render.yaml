@@ -1,15 +1,12 @@
-# Render.com Blueprint configuration for Vyom-Rakshak (ASTRA VEER)
-# Documentation: https://render.com/docs/blueprint-spec
-
 services:
-  # Unified Web Service: Serves both the FastAPI backend and built React frontend
   - type: web
     name: vyom-rakshak
-    runtime: docker
-    dockerfilePath: ./Dockerfile
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt && cd frontend && npm install && npm run build
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     plan: free
     region: oregon
     healthCheckPath: /api/health
     envVars:
-      - key: PORT
-        value: 10000
+      - key: PYTHONPATH
+        value: /opt/render/project/src

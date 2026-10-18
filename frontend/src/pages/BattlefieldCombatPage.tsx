@@ -323,7 +323,7 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
       <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase">
-            <Shield className="w-4 h-4" /> ASTRA VEER // SIH 247 COUNTER-DRONE COMBAT SIMULATOR
+            <Shield className="w-4 h-4" /> VYOM RAKSHAK // SIH 247 COUNTER-DRONE COMBAT SIMULATOR
           </div>
           <h1 className="text-2xl font-tactical font-black text-slate-100 flex items-center gap-3">
             3D BATTLEFIELD THREAT RESPONSE
@@ -498,7 +498,7 @@ export const BattlefieldCombatPage: React.FC<BattlefieldCombatPageProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
           <div>
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-500/60 font-bold text-xs uppercase">
-              <Sparkles className="w-3.5 h-3.5" /> ASTRA VEER — TOP 3 INNOVATION FEATURES
+              <Sparkles className="w-3.5 h-3.5" /> VYOM RAKSHAK — TOP 3 INNOVATION FEATURES
             </div>
             <h2 className="text-xl font-tactical font-black text-slate-100 mt-1">
               ADVANCED COUNTER-DRONE COGNITIVE SUITE
