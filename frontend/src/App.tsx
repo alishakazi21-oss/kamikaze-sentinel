@@ -280,9 +280,9 @@ export function App() {
       {/* Military Status Footer */}
       <footer className="bg-slate-950/80 border-t border-slate-900 py-3 text-center text-[10px] font-mono text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-2">
-          <span>VYOM RAKSHAK // DEFENCE SERVICES STAFF COLLEGE (SIH 247)</span>
-          <span className="text-cyan-400/80">
-            SOLDIER COMBAT SIMULATION & COUNTER-UAS TRAINER - 100% OFFLINE CAPABLE
+          <span>KAMIKAZE SENTINEL // DEFENCE SERVICES STAFF COLLEGE (SIH 247)</span>
+          <span className="text-red-400/80">
+            KAMIKAZE DRONE SIMULATION & COUNTER-UAS TRAINER - 100% OFFLINE CAPABLE
           </span>
           <span>BUILD v1.0-DEMO // ALL RIGHTS RESERVED</span>
         </div>

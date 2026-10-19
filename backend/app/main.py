@@ -34,7 +34,7 @@ from .adaptive import adaptive_engine, CORE_SKILLS, SKILL_DISPLAY_NAMES
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="VYOM RAKSHAK API",
+    title="KAMIKAZE SENTINEL API",
     description="Sensor-Realistic Explainable Counter-Drone Operator Trainer (SIH 247)",
     version="1.0.0"
 )
@@ -83,7 +83,7 @@ def get_or_create_sim_source(session_id: str, scenario_data: Dict[str, Any]) -> 
 def health_check():
     return {
         "status": "online",
-        "system": "VYOM RAKSHAK Counter-Drone Trainer",
+        "system": "KAMIKAZE SENTINEL Counter-Drone Trainer",
         "version": "1.0.0",
         "offline_ready": True,
         "timestamp": datetime.utcnow().isoformat(),

@@ -289,7 +289,7 @@ export const ScenarioSetupPage: React.FC<ScenarioSetupPageProps> = ({
 
           <div className="space-y-2 font-mono text-xs">
             {[
-              { id: 'native', name: 'VYOM RAKSHAK NATIVE SIM', status: 'ACTIVE (0 GPU)', badge: 'bg-emerald-950 text-emerald-400 border-emerald-500/50' },
+              { id: 'native', name: 'KAMIKAZE SENTINEL NATIVE SIM', status: 'ACTIVE (0 GPU)', badge: 'bg-emerald-950 text-emerald-400 border-emerald-500/50' },
               { id: 'replay', name: 'FLIGHT TELEMETRY REPLAY', status: 'READY (JSON)', badge: 'bg-cyan-950 text-cyan-400 border-cyan-700/50' },
               { id: 'airsim', name: 'COSYS-AIRSIM (UE5)', status: 'STANDBY / LAB ONLY', badge: 'bg-slate-800 text-slate-400 border-slate-700' },
             ].map((src) => (

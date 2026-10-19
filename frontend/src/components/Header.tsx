@@ -57,15 +57,15 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-tactical font-black text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-200 to-emerald-400">
-                VYOM RAKSHAK
+              <span className="font-tactical font-black text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-orange-300 to-yellow-400">
+                KAMIKAZE SENTINEL
               </span>
-              <span className="px-1.5 py-0.2 bg-cyan-950 text-cyan-400 border border-cyan-700/60 rounded text-[10px] font-mono font-bold">
+              <span className="px-1.5 py-0.2 bg-red-950 text-red-400 border border-red-700/60 rounded text-[10px] font-mono font-bold">
                 SIH 247
               </span>
             </div>
             <p className="text-[10px] font-mono text-slate-400 tracking-tight">
-              AI-ENABLED COUNTER-DRONE THREAT SIMULATION TRAINER
+              AI-ENABLED KAMIKAZE DRONE THREAT SIMULATION TRAINER
             </p>
           </div>
         </div>
